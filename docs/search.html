@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Search — devnote</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+</head>
+<body>
+<nav>
+  <span class="brand"><img src="icon.svg" alt="" width="24" height="24"> devnote</span>
+  <a href="index.html">Home</a>
+  <a href="install.html">Install</a>
+  <a href="sync.html">Sync</a>
+  <a href="search.html" class="active">Search</a>
+  <a href="https://github.com/shubhscode/devnote">GitHub</a>
+</nav>
+<div class="wrap">
+  <h1>Search reference</h1>
+  <table>
+    <tr><th>Syntax</th><th>Matches</th></tr>
+    <tr><td><code>book:Work</code></td><td>Notes in the Work notebook</td></tr>
+    <tr><td><code>tag:rust</code></td><td>Notes tagged rust</td></tr>
+    <tr><td><code>status:active</code></td><td>Notes with status active (<code>none active onHold completed dropped</code>)</td></tr>
+    <tr><td><code>title:deploy</code></td><td>Title contains deploy</td></tr>
+    <tr><td><code>body:TODO</code></td><td>Body contains TODO</td></tr>
+    <tr><td><code>"exact phrase"</code></td><td>Quoted phrase match</td></tr>
+    <tr><td><code>-draft</code></td><td>Excludes notes containing draft</td></tr>
+  </table>
+  <p>Terms combine with AND: <code>typescript tag:Work status:Completed</code>. Ranking: title ×3, tags ×2, body ×1; pinned notes first, then score, then most recently updated.</p>
+  <p>There is <strong>no partial-match stemming</strong>: searching <code>trin</code> won't find <code>string</code>. An exclusions-only query matches nothing.</p>
+  <p>Focus search with <kbd>mod shift F</kbd>, clear with <kbd>esc</kbd>. The filter icon scopes to the current notebook, the globe searches all notebooks.</p>
+</div>
+<footer>devnote · MIT · <a href="https://github.com/shubhscode/devnote">github.com/shubhscode/devnote</a></footer>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>devnote — local-first Markdown notebook</title>
+<meta name="description" content="devnote is an open-source, local-first Markdown notebook for developers. No subscription.">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+</head>
+<body>
+<nav>
+  <span class="brand"><img src="icon.svg" alt="" width="24" height="24"> devnote</span>
+  <a href="index.html" class="active">Home</a>
+  <a href="install.html">Install</a>
+  <a href="sync.html">Sync</a>
+  <a href="search.html">Search</a>
+  <a href="https://github.com/shubhscode/devnote">GitHub</a>
+</nav>
+<div class="wrap">
+  <div class="hero">
+    <img src="icon.svg" alt="devnote icon">
+    <h1>devnote</h1>
+    <p>Open-source, local-first Markdown notebook for developers.<br>No subscription. Your notes, on your disk.</p>
+    <a class="btn" href="https://github.com/shubhscode/devnote/releases">Download for macOS</a>
+    <a class="btn ghost" href="install.html">Install guide</a>
+  </div>
+
+  <h2>Why devnote</h2>
+  <div class="grid">
+    <div class="card"><h3>Local-first</h3><p>Notes live as Markdown files in <code>~/devnote</code>. SQLite is an index, not lock-in. Works fully offline, no account wall.</p></div>
+    <div class="card"><h3>Code-friendly editor</h3><p>CodeMirror 6 with GFM preview, syntax highlighting, copy-code buttons, slash menu, table assist, side-by-side and distraction-free modes.</p></div>
+    <div class="card"><h3>Fast search</h3><p>Qualifier grammar (<code>book:</code>, <code>tag:</code>, <code>status:</code>, <code>title:</code>, <code>body:</code>) over 5k notes in ~1–3ms. See the <a href="search.html">search reference</a>.</p></div>
+    <div class="card"><h3>Telescope</h3><p>Fuzzy finder on <kbd>mod K</kbd>: commands, notebooks, tags, headings, themes — everything keyboard-driven.</p></div>
+    <div class="card"><h3>Templates &amp; revisions</h3><p>Built-in templates with placeholders, plus automatic revision snapshots with undoable restore.</p></div>
+    <div class="card"><h3>Git sync, optional</h3><p>Share <code>~/devnote</code> through a private repo. Offline-first by construction, conflicts never drop text. <a href="sync.html">Setup →</a></p></div>
+  </div>
+
+  <h2>Keyboard-first</h2>
+  <table>
+    <tr><th>Action</th><th>Shortcut</th></tr>
+    <tr><td>Telescope (fuzzy finder)</td><td><kbd>mod K</kbd></td></tr>
+    <tr><td>New note / duplicate</td><td><kbd>mod N</kbd> / <kbd>mod D</kbd></td></tr>
+    <tr><td>Templates</td><td><kbd>mod T</kbd></td></tr>
+    <tr><td>Edit / preview / side-by-side</td><td><kbd>mod E</kbd> / <kbd>mod P</kbd></td></tr>
+    <tr><td>Distraction-free</td><td><kbd>mod shift D</kbd></td></tr>
+    <tr><td>Sidebar toggle</td><td><kbd>mod /</kbd></td></tr>
+    <tr><td>Preferences</td><td><kbd>mod ,</kbd></td></tr>
+    <tr><td>Note history back / forward</td><td><kbd>mod ←</kbd> / <kbd>mod →</kbd></td></tr>
+  </table>
+  <p><code>mod</code> = Cmd on macOS, Ctrl elsewhere.</p>
+
+  <h2>Open source</h2>
+  <p>MIT licensed. <a href="https://github.com/shubhscode/devnote">Source on GitHub</a> — Vite + React + Tauri 2 + TypeScript. No telemetry, no required network calls.</p>
+</div>
+<footer>devnote · MIT · <a href="https://github.com/shubhscode/devnote">github.com/shubhscode/devnote</a></footer>
+</body>
+</html>

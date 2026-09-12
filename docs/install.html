@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install — devnote</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+</head>
+<body>
+<nav>
+  <span class="brand"><img src="icon.svg" alt="" width="24" height="24"> devnote</span>
+  <a href="index.html">Home</a>
+  <a href="install.html" class="active">Install</a>
+  <a href="sync.html">Sync</a>
+  <a href="search.html">Search</a>
+  <a href="https://github.com/shubhscode/devnote">GitHub</a>
+</nav>
+<div class="wrap">
+  <h1>Install</h1>
+
+  <h2>macOS app</h2>
+  <p>Download the latest <code>.dmg</code> from <a href="https://github.com/shubhscode/devnote/releases">Releases</a>, open it, drag DevNote into <code>/Applications</code>. Your notes live in <code>~/devnote</code>.</p>
+
+  <h2>From source</h2>
+  <p>Requires Node 20+, pnpm 9, and (for the desktop shell) a stable Rust toolchain.</p>
+<pre><code>git clone https://github.com/shubhscode/devnote.git
+cd devnote
+pnpm install
+
+pnpm dev                                   # web app on :5173
+pnpm --filter @devnote/desktop dev         # desktop app (real Cmd keys)
+pnpm desktop:install                       # release build → /Applications + smoke test</code></pre>
+
+  <h2>Verify</h2>
+<pre><code>pnpm lint && pnpm test && pnpm e2e && pnpm build</code></pre>
+</div>
+<footer>devnote · MIT · <a href="https://github.com/shubhscode/devnote">github.com/shubhscode/devnote</a></footer>
+</body>
+</html>

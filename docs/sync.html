@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sync — devnote</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+</head>
+<body>
+<nav>
+  <span class="brand"><img src="icon.svg" alt="" width="24" height="24"> devnote</span>
+  <a href="index.html">Home</a>
+  <a href="install.html">Install</a>
+  <a href="sync.html" class="active">Sync</a>
+  <a href="search.html">Search</a>
+  <a href="https://github.com/shubhscode/devnote">GitHub</a>
+</nav>
+<div class="wrap">
+  <h1>Sync (optional, git-based)</h1>
+  <p>Sync is never required. Everything works with Wi-Fi off. When you want a second machine (or a backup with history), share <code>~/devnote</code> through a private git repo.</p>
+
+  <h2>Setup</h2>
+  <ol>
+    <li>Create a <strong>private</strong> repo (e.g. <code>git@github.com:you/devnote.git</code>).</li>
+    <li>In devnote: Preferences → General → Git sync, paste the remote URL.</li>
+    <li>Click <strong>Sync now</strong> — initializes the repo, exports notes, commits, pushes.</li>
+  </ol>
+
+  <h2>How it works</h2>
+  <ul>
+    <li>Each note is one <code>.md</code> file with YAML frontmatter: <code>~/devnote/&lt;notebook-path&gt;/&lt;slug&gt;-&lt;id8&gt;.md</code>.</li>
+    <li>Sync now = export → commit → pull → resolve conflicts → push → import.</li>
+    <li>Status dot in the sidebar: green = synced, yellow = uncommitted, blue = unpushed, red = conflict.</li>
+    <li>Manual trigger only — you control when to sync.</li>
+  </ul>
+
+  <h2>Conflicts</h2>
+  <p>Per-file granularity. Newer <code>updatedAt</code> wins; the loser is preserved as <code>&lt;name&gt;.conflict-&lt;device&gt;.md</code> plus a banner. Text is never silently dropped.</p>
+  <p>Deleting a note sets <code>trashed: true</code> in frontmatter (a tombstone), so deletes propagate without resurrecting files.</p>
+
+  <h2>Backup</h2>
+  <p>Preferences → General → Backup &amp; restore → Export backup (<code>.zip</code>). Restore overwrites <code>~/devnote</code> from a zip.</p>
+</div>
+<footer>devnote · MIT · <a href="https://github.com/shubhscode/devnote">github.com/shubhscode/devnote</a></footer>
+</body>
+</html>
