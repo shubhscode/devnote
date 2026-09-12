@@ -50,6 +50,19 @@ writeFileSync(
   join(ROOT, 'apps/desktop/src-tauri/Cargo.toml'),
   cargo.replace(/^version = "[^"]+"/m, `version = "${version}"`),
 );
+// Cargo.toml bump invalidates the lock — sync the package stanza (cargo
+// would rewrite this on next build; keep the release commit self-consistent).
+const lockPath = join(ROOT, 'apps/desktop/src-tauri/Cargo.lock');
+const lock = readFileSync(lockPath, 'utf8');
+const nextLock = lock.replace(
+  /name = "devnote-desktop"\nversion = "[^"]+"/,
+  `name = "devnote-desktop"\nversion = "${version}"`,
+);
+if (nextLock === lock) {
+  console.error('devnote-desktop stanza not found in Cargo.lock. No commit made.');
+  process.exit(1);
+}
+writeFileSync(lockPath, nextLock);
 writeFileSync(
   join(ROOT, 'apps/web/src/lib/version.ts'),
   ts.replace(/APP_VERSION = '[^']+'/, `APP_VERSION = '${version}'`),
