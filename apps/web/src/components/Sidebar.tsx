@@ -96,7 +96,7 @@ export default function Sidebar(props: SidebarProps) {
             onClick={() => props.onSelect({ kind: 'notebook', id: notebook.id })}
             title={`${notebookPath(props.notebooks, notebook.id)} — Enter: workspace, mod+Enter: toggle`}
             onKeyDown={(e) => {
-              // Inkdrop parity: plain Enter opens the notebook as a workspace.
+              // Plain Enter opens the notebook as a workspace.
               // mod+Enter must bubble to the global toggle (see App key handler).
               if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
                 e.preventDefault();

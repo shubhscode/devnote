@@ -1,4 +1,4 @@
-# devnote — open-source, local-first Inkdrop clone
+# devnote — open-source, local-first Markdown notebook
 
 No subscription. Your Markdown, on your disk, searchable offline.
 
@@ -35,8 +35,8 @@ pnpm build                             # web + desktop release (.app + .dmg in a
 ## Search
 
 Qualifiers `book:`, `tag:`, `status:`, `title:`, `body:`, `"quoted phrases"`, `-exclusions`
-(combined with AND; exclusions-only matches nothing — Inkdrop parity).
-Like Inkdrop, there is **no partial-match stemming**: searching `trin` won't find `string`.
+(combined with AND; exclusions-only matches nothing).
+There is **no partial-match stemming**: searching `trin` won't find `string`.
 Filter icon = current notebook, globe = all notebooks. `pnpm bench` gates 5k-note search (<50ms; currently ~1–3ms).
 
 ## Icons

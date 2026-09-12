@@ -87,7 +87,7 @@ export default function TemplatePicker(props: Props) {
   const startEdit = () => {
     if (!selected) return;
     if (selected.builtin) {
-      // Inkdrop parity: editing a built-in saves a custom copy.
+      // Editing a built-in saves a custom copy.
       const id = props.onDuplicate(selected.id);
       if (id === null) return;
       setSelectedId(id);

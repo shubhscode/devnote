@@ -1,4 +1,4 @@
-// Note templates (Inkdrop parity: reference/note-templates).
+// Note templates.
 // Custom templates live in the store; built-ins ship here (read-only).
 // Supported `_template` frontmatter subset: title, description, tags,
 // notebook, status. Placeholders: {{ 'now' | date: '%Y-%m-%d' }}, {% uuid %}.
@@ -124,7 +124,7 @@ export interface AppliedTemplate {
 }
 
 /**
- * Apply a template to note inputs (Inkdrop parity):
+ * Apply a template to note inputs:
  * - title: template title wins when the note is untitled, else kept
  * - tags: union (existing kept, template adds)
  * - status: template's wins when the note has none, else kept
@@ -199,7 +199,7 @@ export function duplicateAsCustom(customs: Template[], all: Template[], id: stri
   return { customs: [...customs, copy], template: copy };
 }
 
-// ---------- built-ins (original content, Inkdrop-style categories) ----------
+// ---------- built-ins (original content) ----------
 
 const DAILY = `---
 _template:

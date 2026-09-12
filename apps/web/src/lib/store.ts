@@ -220,7 +220,7 @@ export function useDevnoteStore() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<SearchScope>('local');
-  /** Workspace root notebook id — sidebar scopes to its subtree (Inkdrop parity). */
+  /** Workspace root notebook id — sidebar scopes to its subtree. */
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [past, setPast] = useState<string[]>([]);

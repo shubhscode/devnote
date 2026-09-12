@@ -1,10 +1,10 @@
-// Full search grammar (Inkdrop parity, PLAN.md §5).
+// Full search grammar (see PLAN.md §5).
 //   book:NAME tag:TAG status:STATUS title:TEXT body:TEXT "quoted phrase" -exclusion
 // Terms combine with AND; exclusions subtract. Exclusions-only matches nothing
-// (same documented limitation as Inkdrop).
+// (documented limitation).
 //
 // Matching is case-insensitive substring (SQLite FTS5 in the Tauri backend
-// will rank the same way; no partial-match stemming — documented like Inkdrop).
+// will rank the same way; no partial-match stemming).
 import { notebookPath } from './notebooks';
 import type { Note, Notebook } from './types';
 
@@ -148,7 +148,7 @@ export interface ScoredNote {
 
 /**
  * Filter + rank notes. Returns [] for empty term lists AND exclusions-only
- * queries (caller shows a hint for the latter — Inkdrop parity).
+ * queries (caller shows a hint for the latter).
  * Sort: pinned first, score desc, updatedAt desc.
  */
 export function searchNotes(notes: Note[], notebooks: Notebook[], query: string): ScoredNote[] {

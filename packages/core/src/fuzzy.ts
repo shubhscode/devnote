@@ -1,4 +1,4 @@
-// Subsequence fuzzy matching for Telescope (Inkdrop parity).
+// Subsequence fuzzy matching for Telescope.
 // Case-insensitive; bonuses for word starts, consecutive runs, exact case.
 // Returns matched indices for <mark> highlighting. Empty query matches all.
 export interface FuzzyHit {

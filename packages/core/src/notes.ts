@@ -79,7 +79,7 @@ export function updateNote(
   return next;
 }
 
-/** Duplicate into the same notebook (Inkdrop parity: same title/tags/status). */
+/** Duplicate into the same notebook (same title/tags/status). */
 export function duplicateNote(
   notes: Note[],
   id: string,

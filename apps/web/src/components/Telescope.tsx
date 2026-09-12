@@ -91,7 +91,7 @@ export default function Telescope(props: Props) {
     inputRef.current?.focus();
   }, []);
 
-  // Prefix scoping: `> `, `b `, `t `, `# `, `h ` (Inkdrop parity; remappable later).
+  // Prefix scoping: `> `, `b `, `t `, `# `, `h ` (remappable later).
   const { scope, rest } = useMemo(() => {
     const m = /^(>|b|t|#|h)\s(.*)$/.exec(query);
     if (!m) return { scope: null as Scope | null, rest: query };

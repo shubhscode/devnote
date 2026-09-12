@@ -2,7 +2,7 @@
   "name": "devnote",
   "version": "0.0.1",
   "private": true,
-  "description": "devnote — open-source, local-first Inkdrop clone. No subscription.",
+  "description": "devnote — open-source, local-first Markdown notebook for developers. No subscription.",
   "license": "MIT",
   "packageManager": "pnpm@9.0.0",
   "scripts": {

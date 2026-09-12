@@ -10,7 +10,7 @@ interface Props {
   onMove: (targetNotebookId: string) => void;
 }
 
-/** Move-to-Notebook dialog for restoring trashed notes (Inkdrop parity). */
+/** Move-to-Notebook dialog for restoring trashed notes. */
 export default function MoveToNotebookDialog(props: Props) {
   useEffect(() => {
     const h = (e: KeyboardEvent) => {

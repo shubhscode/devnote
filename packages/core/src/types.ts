@@ -38,7 +38,7 @@ export interface Template {
   id: string;
   name: string;
   body: string;
-  /** Built-ins are read-only; editing one saves a custom copy (Inkdrop parity). */
+  /** Built-ins are read-only; editing one saves a custom copy. */
   builtin?: boolean;
   category?: string;
   description?: string;

@@ -133,8 +133,7 @@ export function moveNotebook(
 
 /**
  * Delete a notebook. Only allowed when it has no sub-notebooks and no
- * non-trashed notes — caller must trash/move contents first (Inkdrop parity:
- * no silent data loss).
+ * non-trashed notes — caller must trash/move contents first (no silent data loss).
  */
 export function deleteNotebook(
   notebooks: Notebook[],

@@ -45,7 +45,7 @@ interface EditorProps {
  * Single source of truth: title/body render straight from the store note and
  * commit on every change. No drafts, no debounce, no flush — note switches
  * can never show stale content. (updatedAt moves per keystroke; the edited
- * note sorts to top like Apple Notes / Inkdrop.)
+ * note sorts to top like Apple Notes.)
  */
 export default function Editor(props: EditorProps) {
   const { note, mode } = props;

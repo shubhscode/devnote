@@ -1,4 +1,4 @@
-// Revision history (Inkdrop parity: reference/revision-history).
+// Revision history.
 // Snapshots on idle / note-switch / pre-restore; restore is undoable because
 // the pre-restore state is snapshotted first. Capped per note + globally.
 import { generateId } from './types';
