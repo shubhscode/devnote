@@ -1,0 +1,43 @@
+# Deps / build outputs
+node_modules/
+dist/
+target/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Tauri generated + bundles (rebuilt by `pnpm desktop:install` / CI)
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/*.log
+*.dmg
+*.app/
+*.sig
+*.tar.gz
+
+# Local agent working files — kept out of the public repo
+AGENTS.md
+PLAN.md
+PROGRESS.md
+graphify-out/
+
+# Env / secrets — never commit
+.env
+.env.*
+*.local
+*.key
+*.p12
+*.mobileprovision
+*.keychain-db
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.orig
+*.rej
+
+# pnpm
+.pnpm-store/
