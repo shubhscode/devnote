@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "bench": "vitest bench --run",
     "lint": "tsc --noEmit -p tsconfig.json",
-    "e2e": "pnpm --filter @devnote/web e2e"
+    "e2e": "pnpm --filter @devnote/web e2e",
+    "release": "node scripts/bump-version.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.2",

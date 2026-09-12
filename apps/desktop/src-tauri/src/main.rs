@@ -8,6 +8,7 @@ mod backup;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
         .setup(|_app| {
             #[cfg(target_os = "macos")]
             {
