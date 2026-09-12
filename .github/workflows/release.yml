@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+          - os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - run: pnpm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop/src-tauri
+          tagName: v__VERSION__
+          releaseName: "DevNote v__VERSION__"
+          releaseBody: |
+            First public release (unsigned preview).
+
+            macOS: open the .dmg, drag DevNote to /Applications.
+            Unsigned build — first launch: right-click → Open (or `xattr -cr /Applications/DevNote.app`).
+            Windows build is in progress — the NSIS installer may trigger a SmartScreen warning (unsigned).
+
+            Notes live in `~/devnote` (macOS) / `%USERPROFILE%/devnote` (Windows) as plain Markdown.
+          releaseDraft: false
+          prerelease: true
