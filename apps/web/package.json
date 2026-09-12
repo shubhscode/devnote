@@ -17,6 +17,7 @@
     "@devnote/sync": "workspace:*",
     "@formkit/auto-animate": "^0.10.0",
     "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-opener": "^2.5.5",
     "highlight.js": "^11.12.0",
     "motion": "^13.2.0",
     "react": "^18.3.1",

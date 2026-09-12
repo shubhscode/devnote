@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ArrowLeft, Hashtag, Moon, Notebook as NotebookIcon, Sun } from 'reicon-react';
 import { BUNDLED_THEMES, fuzzyFilter } from '@devnote/core';
 import type { TocEntry } from '@devnote/editor';
+import { TELESCOPE_SCOPES as SCOPES, parseTelescopeQuery, scopePrefix, type TelescopeScope } from '../lib/telescope';
 
 export interface TelescopeCommand {
   id: string;
@@ -28,15 +29,7 @@ export type TelescopeAction =
   | { type: 'toc'; pos: number }
   | { type: 'theme'; mode: string };
 
-type Scope = 'commands' | 'notebooks' | 'tags' | 'toc' | 'themes';
-
-const SCOPES: { id: Scope; prefix: string; label: string; placeholder: string }[] = [
-  { id: 'commands', prefix: '>', label: 'Commands', placeholder: 'Run a command…' },
-  { id: 'notebooks', prefix: 'b', label: 'Notebooks', placeholder: 'Jump to a notebook…' },
-  { id: 'tags', prefix: 't', label: 'Tags', placeholder: 'Filter by tag…' },
-  { id: 'toc', prefix: '#', label: 'Contents', placeholder: 'Jump to a heading…' },
-  { id: 'themes', prefix: 'h', label: 'Themes', placeholder: 'Switch theme…' },
-];
+type Scope = TelescopeScope;
 
 interface Props {
   commands: TelescopeCommand[];
@@ -91,13 +84,9 @@ export default function Telescope(props: Props) {
     inputRef.current?.focus();
   }, []);
 
-  // Prefix scoping: `> `, `b `, `t `, `# `, `h ` (remappable later).
-  const { scope, rest } = useMemo(() => {
-    const m = /^(>|b|t|#|h)\s(.*)$/.exec(query);
-    if (!m) return { scope: null as Scope | null, rest: query };
-    const found = SCOPES.find((s) => s.prefix === m[1]);
-    return { scope: found?.id ?? null, rest: m[2] ?? '' };
-  }, [query]);
+  // Prefix scoping via parseTelescopeQuery (bare `>` routes to commands;
+  // letter prefixes need a space so `budget` still searches everything).
+  const { scope, rest } = useMemo(() => parseTelescopeQuery(query), [query]);
 
   const rows: Row[] = useMemo(() => {
     const cmdRows: Row[] = fuzzyFilter(rest, props.commands, (c) => c.title).map(({ item, hit }) => ({
@@ -168,8 +157,9 @@ export default function Telescope(props: Props) {
       if (row) runRow(row, e.metaKey || e.ctrlKey ? 'cmd' : e.shiftKey ? 'shift' : 'none');
     } else if (e.key === 'Escape') {
       e.preventDefault();
-      if (query !== '') setQuery('');
-      else if (scope) setQuery('');
+      // Layered: filter → scope list → all sources → close.
+      if (scope && rest !== '') setQuery(scopePrefix(scope));
+      else if (query !== '') setQuery('');
       else props.onClose();
     }
   };

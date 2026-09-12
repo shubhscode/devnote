@@ -6,6 +6,9 @@ import { BUNDLED_THEMES, THEME_VAR_KEYS, descendantIds, getTheme, notebookPath, 
 import type { NoteStatus, TreeNode } from '@devnote/core';
 import { useDevnoteStore } from './lib/store';
 import { COMMAND_META } from './lib/commands';
+import { APP_VERSION, UPDATE_OWNER, UPDATE_REPO } from './lib/version';
+import { checkForUpdates, shouldRecheck, type ReleaseInfo } from './lib/updates';
+import { openExternal } from './lib/open';
 import { isMod, isTypingTarget, modLabel } from './lib/keys';
 import { isTauri } from './lib/mirror';
 import Sidebar from './components/Sidebar';
@@ -34,6 +37,7 @@ export default function App() {
   const [notebookDelete, setNotebookDelete] = useState<{ id: string; name: string } | null>(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [historyNoteId, setHistoryNoteId] = useState<string | null>(null);
+  const [update, setUpdate] = useState<ReleaseInfo | null>(null);
   const [telescopeOpen, setTelescopeOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const editorViewRef = useRef<EditorView | null>(null);
@@ -101,12 +105,29 @@ export default function App() {
   const ref = useRef(store);
   ref.current = store;
   // Fresh modal flags for the mount-once key handler below.
-  const uiRef = useRef({ templatePickerOpen, telescopeOpen, historyNoteId, prefsOpen, restoreIds, destroyIds, notebookDelete });
-  uiRef.current = { templatePickerOpen, telescopeOpen, historyNoteId, prefsOpen, restoreIds, destroyIds, notebookDelete };
+  const uiRef = useRef({ templatePickerOpen, telescopeOpen, historyNoteId, prefsOpen, restoreIds, destroyIds, notebookDelete, updateOpen: update !== null });
+  uiRef.current = { templatePickerOpen, telescopeOpen, historyNoteId, prefsOpen, restoreIds, destroyIds, notebookDelete, updateOpen: update !== null };
   // Idle revision snapshots (30s quiet) — cheap dirty-check inside.
   useEffect(() => {
     const t = setInterval(() => ref.current.snapshotIdle(), 10_000);
     return () => clearInterval(t);
+  }, []);
+  // Update-available notice: GitHub Releases check, max once/day, silent offline.
+  useEffect(() => {
+    let cancelled = false;
+    try {
+      const raw = localStorage.getItem('devnote:last-update-check');
+      if (!shouldRecheck(raw === null ? null : Number(raw))) return;
+      void checkForUpdates(APP_VERSION, UPDATE_OWNER, UPDATE_REPO).then((rel) => {
+        try { localStorage.setItem('devnote:last-update-check', String(Date.now())); } catch { /* ignore */ }
+        if (cancelled || !rel) return;
+        try {
+          if (localStorage.getItem('devnote:update-dismissed') === rel.tag) return;
+        } catch { /* ignore */ }
+        setUpdate(rel);
+      });
+    } catch { /* privacy mode — never nag */ }
+    return () => { cancelled = true; };
   }, []);
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -176,7 +197,7 @@ export default function App() {
       if (mod && !e.shiftKey && e.key === 'Enter') {
         // Toggle workspace — but never while a dialog owns Enter.
         const ui = uiRef.current;
-        if (ui.templatePickerOpen || ui.telescopeOpen || ui.historyNoteId !== null || ui.prefsOpen || ui.restoreIds !== null || ui.destroyIds !== null || ui.notebookDelete !== null) return;
+        if (ui.templatePickerOpen || ui.telescopeOpen || ui.historyNoteId !== null || ui.prefsOpen || ui.restoreIds !== null || ui.destroyIds !== null || ui.notebookDelete !== null || ui.updateOpen) return;
         e.preventDefault();
         s.toggleWorkspace();
         return;
@@ -189,6 +210,11 @@ export default function App() {
       if (mod && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
         document.getElementById('note-search')?.focus();
+        return;
+      }
+      if (mod && e.shiftKey && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        void s.syncNow();
         return;
       }
       if (e.key === 'Escape' && !typing) {
@@ -248,6 +274,7 @@ export default function App() {
     };
     const runs: Record<string, () => void> = {
       'core:new-note': () => s.newNote(),
+      'core:new-notebook': () => s.addNotebook(s.selection.kind === 'notebook' ? s.selection.id : null),
       'core:choose-template': () => setTemplatePickerOpen(true),
       'core:toggle-telescope': () => setTelescopeOpen((v) => !v),
       'core:toggle-preview': () => setViewMode((m) => (m === 'preview' ? 'edit' : 'preview')),
@@ -255,24 +282,44 @@ export default function App() {
       'core:distraction-free': () => setFocusMode((v) => !v),
       'core:toggle-sidebar': () => setSidebarOpen((v) => !v),
       'core:focus-workspace': () => s.toggleWorkspace(),
+      'core:exit-workspace': () => s.clearWorkspace(),
       'core:toggle-theme': () => toggleTheme(),
       'core:open-preferences': () => setPrefsOpen(true),
       'core:navigate-back': () => s.goBack(),
       'core:navigate-forward': () => s.goForward(),
       'core:find': () => focusSearch(),
       'core:find-global': () => { if (s.selection.kind !== 'all') s.select({ kind: 'all' }); s.setScope('global'); document.getElementById('note-search')?.focus(); },
+      'core:toggle-search-scope': () => s.toggleScope(),
+      'core:toggle-pin': () => { const cur = s.activeNote; if (cur) s.commitPatch(cur.id, { pinned: !cur.pinned }); },
       'core:show-history': () => { if (s.activeNoteId !== null) setHistoryNoteId(s.activeNoteId); },
       'core:duplicate-note': () => { const list = ids(); if (list.length > 0) s.duplicate(list); },
       'core:trash-note': () => { const list = ids(); if (list.length > 0) s.trash(list); },
+      'core:sync-now': () => void s.syncNow(),
+      'core:export-mirror': () => void s.exportMirror(),
+      'core:import-mirror': () => void s.importMirror(),
+      'core:check-for-updates': () => void (async () => {
+        const rel = await checkForUpdates(APP_VERSION, UPDATE_OWNER, UPDATE_REPO);
+        try { localStorage.setItem('devnote:last-update-check', String(Date.now())); } catch { /* ignore */ }
+        if (rel) setUpdate(rel);
+        else s.setNotice(`You're up to date (v${APP_VERSION})`);
+      })(),
     };
-    return COMMAND_META.map((m) => ({
+    // Telescope never lists its own toggle, hides note ops without an active
+    // note, and hides exit-workspace outside a workspace (no dead no-ops).
+    const NOTE_COMMANDS = new Set(['core:show-history', 'core:duplicate-note', 'core:trash-note', 'core:toggle-pin']);
+    return COMMAND_META.filter((m) => {
+      if (m.id === 'core:toggle-telescope') return false;
+      if (m.id === 'core:exit-workspace' && s.workspaceId === null) return false;
+      if (s.activeNoteId === null && NOTE_COMMANDS.has(m.id)) return false;
+      return true;
+    }).map((m) => ({
       id: m.id,
       title: m.title,
       hint: m.binding?.replace('mod', modLabel()),
       run: runs[m.id] ?? (() => undefined),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.notes, store.activeNoteId, store.selectedIds, store.selection]);
+  }, [store.notes, store.activeNoteId, store.activeNote, store.selectedIds, store.selection, store.workspaceId]);
 
   const runTelescopeAction = (a: TelescopeAction) => {
     const s = store;
@@ -522,6 +569,20 @@ export default function App() {
           danger
           onConfirm={() => { store.removeNotebook(notebookDelete.id); setNotebookDelete(null); }}
           onClose={() => setNotebookDelete(null)}
+        />
+      )}
+
+      {update !== null && (
+        <ConfirmDialog
+          title={`Update available: ${update.name}`}
+          message={`DevNote ${update.tag} is out — you're on v${APP_VERSION}. Download from GitHub?`}
+          confirmLabel="Download"
+          onConfirm={() => {
+            // System browser via opener; fall back to a tab if denied.
+            void openExternal(update.url).catch(() => window.open(update.url, '_blank', 'noopener'));
+            setUpdate(null);
+          }}
+          onClose={() => { try { localStorage.setItem('devnote:update-dismissed', update.tag); } catch { /* ignore */ } setUpdate(null); }}
         />
       )}
 
