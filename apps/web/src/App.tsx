@@ -137,12 +137,14 @@ export default function App() {
       const typing = isTypingTarget(e.target);
       const mod = isMod(e);
 
-      if (mod && (e.key === 'n' || e.key === 'N')) {
+      if (mod && !e.shiftKey && (e.key === 'n' || e.key === 'N')) {
         e.preventDefault();
         s.newNote();
         return;
       }
-      if (mod && (e.key === 'd' || e.key === 'D')) {
+      // NOTE: `!e.shiftKey` matters — Shift+D yields e.key 'D' and would
+      // otherwise swallow the focus-mode chord below (same for N).
+      if (mod && !e.shiftKey && (e.key === 'd' || e.key === 'D')) {
         e.preventDefault();
         const ids = s.selectedIds.length > 0 ? s.selectedIds : s.activeNoteId !== null ? [s.activeNoteId] : [];
         if (ids.length > 0) s.duplicate(ids);
