@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keyboard shortcuts — devnote docs</title>
+<meta name="description" content="Every devnote action is keyboard-first. Full shortcut map and Telescope prefixes.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
+</head>
+<body>
+<div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>DOCS</small></a>
+  <div class="nav-links" data-nav-links>
+    <a href="index.html">Home</a><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html">Search</a><a href="shortcuts.html" class="active">Shortcuts</a>
+  </div>
+  <div class="nav-right">
+    <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
+    <a class="gh-btn" href="https://github.com/shubhscode/devnote"><span aria-hidden="true">★</span><span class="count" data-stars>—</span></a>
+    <button class="icon-btn burger" data-burger title="Menu">☰</button>
+  </div>
+</div></nav>
+
+<div class="docs-layout">
+  <aside class="docs-side">
+    <h5>Getting started</h5>
+    <a href="install.html">Install</a>
+    <a href="index.html#features">Features tour</a>
+    <h5>Using devnote</h5>
+    <a href="search.html">Search reference</a>
+    <a href="shortcuts.html" class="active">Keyboard shortcuts</a>
+    <a href="sync.html">Git sync &amp; backup</a>
+    <h5>Project</h5>
+    <a href="https://github.com/shubhscode/devnote">GitHub ★ <span data-stars>—</span></a>
+    <a href="https://github.com/shubhscode/devnote/releases">Releases</a>
+  </aside>
+
+  <article class="doc">
+    <div class="breadcrumb">Docs / Shortcuts</div>
+    <h1>Keyboard shortcuts</h1>
+    <p class="lead"><code>mod</code> = <kbd>⌘</kbd> on macOS, <kbd>Ctrl</kbd> elsewhere. Every action is also a <code>core:*</code> palette command — nothing is mouse-only.</p>
+
+    <h2>Notes &amp; navigation</h2>
+    <div class="keys">
+      <div class="key-row"><span>Telescope (fuzzy finder)</span><kbd>mod K</kbd></div>
+      <div class="key-row"><span>New note / Duplicate</span><span><kbd>mod N</kbd> <kbd>mod D</kbd></span></div>
+      <div class="key-row"><span>Templates</span><kbd>mod T</kbd></div>
+      <div class="key-row"><span>Note history back / forward</span><span><kbd>mod ←</kbd> <kbd>mod →</kbd></span></div>
+      <div class="key-row"><span>Focus search</span><kbd>mod ⇧ F</kbd></div>
+    </div>
+
+    <h2>Editor &amp; view</h2>
+    <div class="keys">
+      <div class="key-row"><span>Edit / Preview toggle</span><kbd>mod E</kbd></div>
+      <div class="key-row"><span>Side-by-side</span><kbd>mod P</kbd></div>
+      <div class="key-row"><span>Distraction-free</span><kbd>mod ⇧ D</kbd></div>
+      <div class="key-row"><span>Sidebar toggle</span><kbd>mod /</kbd></div>
+      <div class="key-row"><span>Focus workspace notebook</span><kbd>mod ⏎</kbd></div>
+      <div class="key-row"><span>Preferences</span><kbd>mod ,</kbd></div>
+    </div>
+
+    <h2>Markdown formatting</h2>
+    <div class="keys">
+      <div class="key-row"><span>Bold / Italic</span><span><kbd>mod B</kbd> <kbd>mod I</kbd></span></div>
+      <div class="key-row"><span>Link / Quote</span><span><kbd>mod ⇧ K</kbd> <kbd>mod '</kbd></span></div>
+      <div class="key-row"><span>Slash menu</span><kbd>/</kbd></div>
+      <div class="key-row"><span>Code suggestions</span><kbd>ctrl Space</kbd></div>
+    </div>
+
+    <h2>Telescope prefixes</h2>
+    <table>
+      <tr><th>Prefix</th><th>Searches</th><th>Keys</th></tr>
+      <tr><td><code>&gt;</code></td><td>Commands (<code>core:*</code>)</td><td><kbd>⏎</kbd> run</td></tr>
+      <tr><td><code>b</code></td><td>Notebooks</td><td><kbd>⏎</kbd> open · <kbd>⇧ ⏎</kbd> move note</td></tr>
+      <tr><td><code>t</code></td><td>Tags</td><td><kbd>⏎</kbd> filter · <kbd>⇧ ⏎</kbd> add to note</td></tr>
+      <tr><td><code>#</code></td><td>Headings &amp; tasks in open note</td><td><kbd>⏎</kbd> jump</td></tr>
+      <tr><td><code>h</code></td><td>Themes</td><td><kbd>⏎</kbd> apply</td></tr>
+    </table>
+    <div class="callout"><b>Remappable:</b> all shortcuts are user-remappable (keybinding editor lands with the plugin API). Never hardcode <kbd>⌘</kbd> vs <kbd>Ctrl</kbd> — the app uses a <code>mod</code> abstraction throughout.</div>
+
+    <div class="pager">
+      <a href="search.html"><small>← Previous</small>Search reference</a>
+      <a href="https://github.com/shubhscode/devnote" style="text-align:right"><small>Next →</small>Star on GitHub ★</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site"><div class="foot-grid">
+  <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span></div>
+  <nav><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html">Search</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
+</div></footer>
+<script src="app.js"></script>
+</body>
+</html>

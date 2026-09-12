@@ -1,37 +1,86 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Search — devnote</title>
-<link rel="stylesheet" href="styles.css">
+<title>Search reference — devnote docs</title>
+<meta name="description" content="devnote search grammar: book:, tag:, status:, title:, body:, quoted phrases, exclusions.">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
 </head>
 <body>
-<nav>
-  <span class="brand"><img src="icon.svg" alt="" width="24" height="24"> devnote</span>
-  <a href="index.html">Home</a>
-  <a href="install.html">Install</a>
-  <a href="sync.html">Sync</a>
-  <a href="search.html" class="active">Search</a>
-  <a href="https://github.com/shubhscode/devnote">GitHub</a>
-</nav>
-<div class="wrap">
-  <h1>Search reference</h1>
-  <table>
-    <tr><th>Syntax</th><th>Matches</th></tr>
-    <tr><td><code>book:Work</code></td><td>Notes in the Work notebook</td></tr>
-    <tr><td><code>tag:rust</code></td><td>Notes tagged rust</td></tr>
-    <tr><td><code>status:active</code></td><td>Notes with status active (<code>none active onHold completed dropped</code>)</td></tr>
-    <tr><td><code>title:deploy</code></td><td>Title contains deploy</td></tr>
-    <tr><td><code>body:TODO</code></td><td>Body contains TODO</td></tr>
-    <tr><td><code>"exact phrase"</code></td><td>Quoted phrase match</td></tr>
-    <tr><td><code>-draft</code></td><td>Excludes notes containing draft</td></tr>
-  </table>
-  <p>Terms combine with AND: <code>typescript tag:Work status:Completed</code>. Ranking: title ×3, tags ×2, body ×1; pinned notes first, then score, then most recently updated.</p>
-  <p>There is <strong>no partial-match stemming</strong>: searching <code>trin</code> won't find <code>string</code>. An exclusions-only query matches nothing.</p>
-  <p>Focus search with <kbd>mod shift F</kbd>, clear with <kbd>esc</kbd>. The filter icon scopes to the current notebook, the globe searches all notebooks.</p>
+<div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>DOCS</small></a>
+  <div class="nav-links" data-nav-links>
+    <a href="index.html">Home</a><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html" class="active">Search</a><a href="shortcuts.html">Shortcuts</a>
+  </div>
+  <div class="nav-right">
+    <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
+    <a class="gh-btn" href="https://github.com/shubhscode/devnote"><span aria-hidden="true">★</span><span class="count" data-stars>—</span></a>
+    <button class="icon-btn burger" data-burger title="Menu">☰</button>
+  </div>
+</div></nav>
+
+<div class="docs-layout">
+  <aside class="docs-side">
+    <h5>Getting started</h5>
+    <a href="install.html">Install</a>
+    <a href="index.html#features">Features tour</a>
+    <h5>Using devnote</h5>
+    <a href="search.html" class="active">Search reference</a>
+    <a href="shortcuts.html">Keyboard shortcuts</a>
+    <a href="sync.html">Git sync &amp; backup</a>
+    <h5>Project</h5>
+    <a href="https://github.com/shubhscode/devnote">GitHub ★ <span data-stars>—</span></a>
+    <a href="https://github.com/shubhscode/devnote/releases">Releases</a>
+  </aside>
+
+  <article class="doc">
+    <div class="breadcrumb">Docs / Search</div>
+    <h1>Search reference</h1>
+    <p class="lead">One query language across the whole library. Focus with <kbd>mod ⇧ F</kbd>, clear with <kbd>esc</kbd>. The filter icon scopes to the current notebook; the globe searches everything.</p>
+
+    <h2>Grammar</h2>
+    <table>
+      <tr><th>Syntax</th><th>Matches</th><th>Example</th></tr>
+      <tr><td><code>book:Work</code></td><td>Notes in the Work notebook</td><td><code>book:Engineering rust</code></td></tr>
+      <tr><td><code>tag:rust</code></td><td>Notes tagged rust</td><td><code>tag:rust status:active</code></td></tr>
+      <tr><td><code>status:active</code></td><td>Status is <code>none active onHold completed dropped</code></td><td><code>status:completed tag:gtd</code></td></tr>
+      <tr><td><code>title:deploy</code></td><td>Title contains deploy</td><td><code>title:checklist</code></td></tr>
+      <tr><td><code>body:TODO</code></td><td>Body contains TODO</td><td><code>body:migration -done</code></td></tr>
+      <tr><td><code>"exact phrase"</code></td><td>Verbatim phrase match</td><td><code>"conflict drill"</code></td></tr>
+      <tr><td><code>-draft</code></td><td>Excludes notes containing draft</td><td><code>roadmap -stale</code></td></tr>
+    </table>
+
+    <h2>Combining terms</h2>
+    <p>Terms combine with <b>AND</b>:</p>
+    <pre class="code" data-copy><code>typescript tag:Work status:Completed
+book:Engineering "conflict drill" -draft</code></pre>
+    <div class="callout warn"><b>Exclusions-only matches nothing.</b> A query of only <code>-draft</code> returns no results by design — add at least one positive term.</div>
+
+    <h2>Ranking</h2>
+    <p>Title hits ×3, tag hits ×2, body hits ×1. Pinned notes sort first, then score, then most recently updated. Matching lines appear as snippets under each result.</p>
+    <pre class="code" data-copy><code>$ pnpm bench
+✓ search 5k notes — mean 1.8ms, p99 3.5ms (gate &lt;50ms)</code></pre>
+
+    <h2>Limitations</h2>
+    <div class="callout"><b>No partial-match stemming:</b> searching <code>trin</code> won't find <code>string</code>. This is deliberate for predictability at 5k-note scale — FTS5 ranking parity is tracked in the roadmap.</div>
+
+    <div class="pager">
+      <a href="sync.html"><small>← Previous</small>Git sync &amp; backup</a>
+      <a href="shortcuts.html" style="text-align:right"><small>Next →</small>Keyboard shortcuts</a>
+    </div>
+  </article>
 </div>
-<footer>devnote · MIT · <a href="https://github.com/shubhscode/devnote">github.com/shubhscode/devnote</a></footer>
+
+<footer class="site"><div class="foot-grid">
+  <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span></div>
+  <nav><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html">Search</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
+</div></footer>
+<script src="app.js"></script>
 </body>
 </html>

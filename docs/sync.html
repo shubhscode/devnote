@@ -1,47 +1,100 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sync — devnote</title>
-<link rel="stylesheet" href="styles.css">
+<title>Git sync &amp; backup — devnote docs</title>
+<meta name="description" content="Optional git-based sync for devnote. Share ~/devnote through a private repo. Conflicts never drop text.">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
 </head>
 <body>
-<nav>
-  <span class="brand"><img src="icon.svg" alt="" width="24" height="24"> devnote</span>
-  <a href="index.html">Home</a>
-  <a href="install.html">Install</a>
-  <a href="sync.html" class="active">Sync</a>
-  <a href="search.html">Search</a>
-  <a href="https://github.com/shubhscode/devnote">GitHub</a>
-</nav>
-<div class="wrap">
-  <h1>Sync (optional, git-based)</h1>
-  <p>Sync is never required. Everything works with Wi-Fi off. When you want a second machine (or a backup with history), share <code>~/devnote</code> through a private git repo.</p>
+<div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>DOCS</small></a>
+  <div class="nav-links" data-nav-links>
+    <a href="index.html">Home</a><a href="install.html">Install</a><a href="sync.html" class="active">Sync</a><a href="search.html">Search</a><a href="shortcuts.html">Shortcuts</a>
+  </div>
+  <div class="nav-right">
+    <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
+    <a class="gh-btn" href="https://github.com/shubhscode/devnote"><span aria-hidden="true">★</span><span class="count" data-stars>—</span></a>
+    <button class="icon-btn burger" data-burger title="Menu">☰</button>
+  </div>
+</div></nav>
 
-  <h2>Setup</h2>
-  <ol>
-    <li>Create a <strong>private</strong> repo (e.g. <code>git@github.com:you/devnote.git</code>).</li>
-    <li>In devnote: Preferences → General → Git sync, paste the remote URL.</li>
-    <li>Click <strong>Sync now</strong> — initializes the repo, exports notes, commits, pushes.</li>
-  </ol>
+<div class="docs-layout">
+  <aside class="docs-side">
+    <h5>Getting started</h5>
+    <a href="install.html">Install</a>
+    <a href="index.html#features">Features tour</a>
+    <h5>Using devnote</h5>
+    <a href="search.html">Search reference</a>
+    <a href="shortcuts.html">Keyboard shortcuts</a>
+    <a href="sync.html" class="active">Git sync &amp; backup</a>
+    <h5>Project</h5>
+    <a href="https://github.com/shubhscode/devnote">GitHub ★ <span data-stars>—</span></a>
+    <a href="https://github.com/shubhscode/devnote/releases">Releases</a>
+  </aside>
 
-  <h2>How it works</h2>
-  <ul>
-    <li>Each note is one <code>.md</code> file with YAML frontmatter: <code>~/devnote/&lt;notebook-path&gt;/&lt;slug&gt;-&lt;id8&gt;.md</code>.</li>
-    <li>Sync now = export → commit → pull → resolve conflicts → push → import.</li>
-    <li>Status dot in the sidebar: green = synced, yellow = uncommitted, blue = unpushed, red = conflict.</li>
-    <li>Manual trigger only — you control when to sync.</li>
-  </ul>
+  <article class="doc">
+    <div class="breadcrumb">Docs / Sync</div>
+    <h1>Sync <span style="color:var(--muted);font-weight:400;font-size:0.6em">optional · git-based · offline-first</span></h1>
+    <p class="lead">Sync is never required. Everything works with Wi-Fi off. When you want a second machine — or history with teeth — share <code>~/devnote</code> through a private git repo.</p>
 
-  <h2>Conflicts</h2>
-  <p>Per-file granularity. Newer <code>updatedAt</code> wins; the loser is preserved as <code>&lt;name&gt;.conflict-&lt;device&gt;.md</code> plus a banner. Text is never silently dropped.</p>
-  <p>Deleting a note sets <code>trashed: true</code> in frontmatter (a tombstone), so deletes propagate without resurrecting files.</p>
+    <div class="toc"><b>On this page</b> · <a href="#setup">Setup</a> · <a href="#how">How it works</a> · <a href="#conflicts">Conflicts</a> · <a href="#status">Status dot</a> · <a href="#backup">Backup</a></div>
 
-  <h2>Backup</h2>
-  <p>Preferences → General → Backup &amp; restore → Export backup (<code>.zip</code>). Restore overwrites <code>~/devnote</code> from a zip.</p>
+    <h2 id="setup">Setup in 3 steps</h2>
+    <div class="step"><span class="n">1</span><div>Create a <b>private</b> repo, e.g. <code>git@github.com:you/devnote.git</code>.</div></div>
+    <div class="step"><span class="n">2</span><div>In devnote: <b>Preferences → General → Git sync</b>, paste the remote URL.</div></div>
+    <div class="step"><span class="n">3</span><div>Click <b>Sync now</b> — initializes the repo, exports notes, commits, pushes.</div></div>
+
+    <h2 id="how">How it works</h2>
+    <ul>
+      <li>Each note is one <code>.md</code> file with YAML frontmatter: <code>~/devnote/&lt;notebook-path&gt;/&lt;slug&gt;-&lt;id8&gt;.md</code>.</li>
+      <li><b>Sync now</b> = export → commit → pull → resolve conflicts → push → import.</li>
+      <li>Manual trigger only — you control when to sync. No background uploads, no surprises.</li>
+    </ul>
+    <pre class="code" data-copy><code><span class="tok-c"># what lands on disk</span>
+~/devnote/engineering/sync-engine-a1b2c3d4.md
+<span class="tok-k">---</span>
+id: a1b2c3d4  status: active
+tags: [rust, sync]  trashed: <span class="tok-f">false</span>
+updatedAt: <span class="tok-s">2026-09-12T10:00:00Z</span>
+<span class="tok-k">---</span>
+# Sync engine design
+...</code></pre>
+
+    <h2 id="conflicts">Conflicts</h2>
+    <div class="callout ok"><b>Never silently drop text.</b> Per-file granularity: newer <code>updatedAt</code> wins, the loser is preserved as <code>&lt;name&gt;.conflict-&lt;device&gt;.md</code> plus a banner.</div>
+    <p>Deleting a note sets <code>trashed: true</code> in frontmatter (a tombstone), so deletes propagate across machines without resurrecting files. Permanent delete prunes the file.</p>
+
+    <h2 id="status">Status dot</h2>
+    <table>
+      <tr><th>Dot</th><th>Meaning</th></tr>
+      <tr><td><span class="yes">● green</span></td><td>Synced — everything committed &amp; pushed.</td></tr>
+      <tr><td><span class="mid">● yellow</span></td><td>Uncommitted local changes.</td></tr>
+      <tr><td><span style="color:var(--accent);font-weight:700">● blue</span></td><td>Committed, unpushed.</td></tr>
+      <tr><td><span style="color:var(--red);font-weight:700">● red</span></td><td>Conflict — resolve the <code>.conflict-*</code> file, then sync again.</td></tr>
+    </table>
+
+    <h2 id="backup">Backup &amp; restore</h2>
+    <p><b>Preferences → General → Backup &amp; restore → Export backup</b> creates <code>~/devnote-backup-YYYY-MM-DD.zip</code> with all notes. Restore overwrites <code>~/devnote</code> from a zip. Your user-data dir location is documented in the same panel.</p>
+    <div class="callout"><b>iOS path:</b> sync via Working Copy (manual git client) — documented in the roadmap. E2EE via git-crypt/age is a planned later layer.</div>
+
+    <div class="pager">
+      <a href="install.html"><small>← Previous</small>Install</a>
+      <a href="search.html" style="text-align:right"><small>Next →</small>Search reference</a>
+    </div>
+  </article>
 </div>
-<footer>devnote · MIT · <a href="https://github.com/shubhscode/devnote">github.com/shubhscode/devnote</a></footer>
+
+<footer class="site"><div class="foot-grid">
+  <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span></div>
+  <nav><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html">Search</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
+</div></footer>
+<script src="app.js"></script>
 </body>
 </html>

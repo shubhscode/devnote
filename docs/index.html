@@ -1,59 +1,263 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>devnote — local-first Markdown notebook</title>
-<meta name="description" content="devnote is an open-source, local-first Markdown notebook for developers. No subscription.">
-<link rel="stylesheet" href="styles.css">
+<title>devnote — local-first Markdown notebook for developers</title>
+<meta name="description" content="devnote is an open-source, local-first Markdown notebook for developers. No subscription. Markdown files on your disk, offline search, git sync.">
+<meta property="og:title" content="devnote — local-first Markdown notebook">
+<meta property="og:description" content="No subscription. Your Markdown, on your disk, searchable offline.">
+<meta property="og:type" content="website">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
 </head>
 <body>
-<nav>
-  <span class="brand"><img src="icon.svg" alt="" width="24" height="24"> devnote</span>
-  <a href="index.html" class="active">Home</a>
-  <a href="install.html">Install</a>
-  <a href="sync.html">Sync</a>
-  <a href="search.html">Search</a>
-  <a href="https://github.com/shubhscode/devnote">GitHub</a>
+<div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>OSS</small></a>
+    <div class="nav-links" data-nav-links>
+      <a href="index.html" class="active">Home</a>
+      <a href="install.html">Install</a>
+      <a href="sync.html">Sync</a>
+      <a href="search.html">Search</a>
+      <a href="shortcuts.html">Shortcuts</a>
+    </div>
+    <div class="nav-right">
+      <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
+      <a class="gh-btn" href="https://github.com/shubhscode/devnote" title="Star on GitHub">
+        <span aria-hidden="true">★</span><span class="star hide-sm">Star</span><span class="count" data-stars>—</span>
+      </a>
+      <button class="icon-btn burger" data-burger title="Menu">☰</button>
+    </div>
+  </div>
 </nav>
+
 <div class="wrap">
-  <div class="hero">
-    <img src="icon.svg" alt="devnote icon">
-    <h1>devnote</h1>
-    <p>Open-source, local-first Markdown notebook for developers.<br>No subscription. Your notes, on your disk.</p>
-    <a class="btn" href="https://github.com/shubhscode/devnote/releases">Download for macOS</a>
-    <a class="btn ghost" href="install.html">Install guide</a>
-    <p style="margin-top:16px;">Windows installer in progress — watch <a href="https://github.com/shubhscode/devnote/releases">Releases</a>.</p>
+  <header class="hero">
+    <span class="pill"><span class="dot"></span> v0.3 — git sync + themes + Telescope &nbsp;·&nbsp; <a href="https://github.com/shubhscode/devnote/releases">What's new →</a></span>
+    <h1>Notes that live<br>on <span class="grad">your disk</span>,<br>not our cloud.</h1>
+    <p class="sub">devnote is the open-source, local-first Markdown notebook for developers. GFM editor, instant offline search, keyboard-first — with <b>no subscription</b>, ever.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/shubhscode/devnote/releases">⬇ Download for macOS</a>
+      <a class="btn btn-ghost" href="install.html">Install guide</a>
+      <a class="btn btn-ghost" href="https://github.com/shubhscode/devnote">★ <span data-stars>—</span>&nbsp;on GitHub</a>
+    </div>
+    <div class="stats-row">
+      <span class="stat"><b>~1–3ms</b> search over 5k notes</span>
+      <span class="stat"><b>100%</b> offline-capable</span>
+      <span class="stat"><b>$0</b> — MIT licensed</span>
+      <span class="stat"><b>165+</b> tests green</span>
+    </div>
+    <div><span class="install-line"><span style="color:#64748b">$</span> git clone https://github.com/shubhscode/devnote.git <button data-copy-text="git clone https://github.com/shubhscode/devnote.git">Copy</button></span></div>
+
+    <!-- App preview mock — mirrors apps/web dark mode (zinc + sky accent) -->
+    <div class="mock-shell reveal">
+      <div class="mock-bar"><span class="traffic"><i></i><i></i><i></i></span><span class="mock-title">DevNote</span></div>
+      <div class="mock-body">
+        <div class="mside">
+          <div class="mrow mall"><svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>All Notes</div>
+          <div class="msec">Notebooks<span class="mplus">+</span></div>
+          <div class="mrow"><span class="mchev"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></span><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Engineering<span class="mpill">42</span></div>
+          <div class="mrow msub"><span class="mchev mhide"></span><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>RFCs<span class="mpill">9</span></div>
+          <div class="mrow"><span class="mchev mclosed"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Personal<span class="mpill">31</span></div>
+          <div class="msec">Statuses</div>
+          <div class="mrow"><span class="mdot" style="background:#a1a1aa"></span>No status<span class="mc">12</span></div>
+          <div class="mrow"><span class="mdot" style="background:#22c55e"></span>Active<span class="mc">18</span></div>
+          <div class="mrow"><span class="mdot" style="background:#f59e0b"></span>On hold<span class="mc">4</span></div>
+          <div class="mrow"><span class="mdot" style="background:#0ea5e9"></span>Completed<span class="mc">64</span></div>
+          <div class="mrow"><span class="mdot" style="background:#f43f5e"></span>Dropped<span class="mc">2</span></div>
+          <div class="msec">Tags</div>
+          <div class="mrow"><span class="mhash">#</span>rust<span class="mc">21</span></div>
+          <div class="mrow"><span class="mhash">#</span>gtd<span class="mc">8</span></div>
+          <div class="mrow"><span class="mhash">#</span>design<span class="mc">5</span></div>
+          <div class="mfoot">
+            <div class="mrow"><span class="mdot" style="background:#22c55e"></span>Synced<span class="mc">⟳</span></div>
+            <div class="mrow"><svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Preferences</div>
+            <div class="mrow"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Trash<span class="mc">3</span></div>
+          </div>
+        </div>
+        <div class="mlist">
+          <div class="mtoolbar">
+            <span class="mtbtn"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></span>
+            <span class="mtbtn"><svg viewBox="0 0 24 24"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg></span>
+            <span class="mtbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+            <span class="msearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search all notes…</span>
+            <span class="mtbtn"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+          </div>
+          <div class="mlabel">All Notes · 128 notes · global</div>
+          <div class="mnote mon">
+            <div class="mnotet"><svg viewBox="0 0 24 24"><path d="M9 4h6l-1 7 3 3v2H7v-2l3-3z"/><line x1="12" y1="16" x2="12" y2="21"/></svg>Sync engine design</div>
+            <div class="mnotes">per-file granularity, newer <mark>updatedAt</mark> wins…</div>
+            <div class="mnotem"><span class="mpillst" style="background:rgba(34,197,94,.15);color:#4ade80"><span class="mdot" style="background:#22c55e"></span>Active</span><span class="mchip">#rust</span><span class="mchip">#sync</span></div>
+          </div>
+          <div class="mnote">
+            <div class="mnotet">Telescope fuzzy ranking</div>
+            <div class="mnotes">score title ×3, tags ×2, recency boost…</div>
+            <div class="mnotem"><span class="mchip">#devnote</span></div>
+          </div>
+          <div class="mnote">
+            <div class="mnotet">Ship checklist v0.3</div>
+            <div class="mnotes">- [x] themes · - [ ] notarization…</div>
+            <div class="mnotem"><span class="mpillst" style="background:rgba(14,165,233,.15);color:#38bdf8"><span class="mdot" style="background:#0ea5e9"></span>Completed</span><span class="mchip">#gtd</span></div>
+          </div>
+        </div>
+        <div class="med">
+          <div class="mmeta"><span class="mpath">Engineering / RFCs</span><span class="macts">
+            <svg viewBox="0 0 24 24" class="on"><path d="M9 4h6l-1 7 3 3v2H7v-2l3-3z"/><line x1="12" y1="16" x2="12" y2="21"/></svg>
+            <svg viewBox="0 0 24 24" class="on"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+          </span></div>
+          <div class="mtitle">Sync engine design</div>
+          <div class="mtags"><span class="mstatus"><span class="mdot" style="background:#22c55e"></span>Active ⌄</span><span class="mchip">#rust ×</span><span class="mchip">#sync ×</span><span class="maddtag">+ tag</span></div>
+          <div class="mcode"><div class="mgutter">1<br>2<br>3<br>4<br>5<br>6<br>7</div><div class="mtext">Each note is one <span class="cb">`.md`</span> file<br>with frontmatter in <span class="cb">`~/devnote`</span>.<br><br><span class="ch">## Conflict rule</span><br><br>Newer <span class="cb">`updatedAt`</span> wins;<br>loser → <span class="cb">`.conflict-md`</span>.</div></div>
+        </div>
+        <div class="mtele">
+          <div class="mtelein">&gt; theme<span class="mcaret"></span><kbd>esc</kbd></div>
+          <div class="mtelelist">
+            <div class="mtelegroup">Commands</div>
+            <div class="mtelerow mon">Toggle <mark>theme</mark></div>
+          </div>
+          <div class="mtelefoot"><span><kbd>↵</kbd> run</span><span><kbd>↑↓</kbd> navigate</span><span class="mright"><kbd>esc</kbd> back</span></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span class="mq"><b>⌘K</b> Telescope</span><span class="mq"><b>⌘N</b> new note</span><span class="mq"><b>⌘T</b> templates</span><span class="mq"><b>⌘E</b> edit / preview</span><span class="mq"><b>⌘P</b> side-by-side</span><span class="mq"><b>⌘⇧D</b> distraction-free</span><span class="mq"><b>book:</b> filter</span><span class="mq"><b>tag:</b> filter</span><span class="mq"><b>status:</b> filter</span>
+      <span class="mq"><b>⌘K</b> Telescope</span><span class="mq"><b>⌘N</b> new note</span><span class="mq"><b>⌘T</b> templates</span><span class="mq"><b>⌘E</b> edit / preview</span><span class="mq"><b>⌘P</b> side-by-side</span><span class="mq"><b>⌘⇧D</b> distraction-free</span><span class="mq"><b>book:</b> filter</span><span class="mq"><b>tag:</b> filter</span><span class="mq"><b>status:</b> filter</span>
+    </div>
   </div>
 
-  <h2>Why devnote</h2>
-  <div class="grid">
-    <div class="card"><h3>Local-first</h3><p>Notes live as Markdown files in <code>~/devnote</code>. SQLite is an index, not lock-in. Works fully offline, no account wall.</p></div>
-    <div class="card"><h3>Code-friendly editor</h3><p>CodeMirror 6 with GFM preview, syntax highlighting, copy-code buttons, slash menu, table assist, side-by-side and distraction-free modes.</p></div>
-    <div class="card"><h3>Fast search</h3><p>Qualifier grammar (<code>book:</code>, <code>tag:</code>, <code>status:</code>, <code>title:</code>, <code>body:</code>) over 5k notes in ~1–3ms. See the <a href="search.html">search reference</a>.</p></div>
-    <div class="card"><h3>Telescope</h3><p>Fuzzy finder on <kbd>mod K</kbd>: commands, notebooks, tags, headings, themes — everything keyboard-driven.</p></div>
-    <div class="card"><h3>Templates &amp; revisions</h3><p>Built-in templates with placeholders, plus automatic revision snapshots with undoable restore.</p></div>
-    <div class="card"><h3>Git sync, optional</h3><p>Share <code>~/devnote</code> through a private repo. Offline-first by construction, conflicts never drop text. <a href="sync.html">Setup →</a></p></div>
+  <section class="block" id="features">
+    <div class="sec-head reveal">
+      <span class="eyebrow">● Why devnote</span>
+      <h2>Everything you need.<br>Nothing phoning home.</h2>
+      <p>Built for developers who live in Markdown and the keyboard. Local-first by construction — sync is an adapter, not a requirement.</p>
+    </div>
+    <div class="bento">
+      <div class="card spot reveal"><div class="ico">⚡</div><h3>Instant search, offline</h3><p>Qualifier grammar (<code>book:</code> <code>tag:</code> <code>status:</code> <code>title:</code> <code>body:</code>, phrases, <code>-exclusions</code>) over 5k notes in ~1–3ms. <a href="search.html">Search reference →</a></p></div>
+      <div class="card spot reveal"><div class="ico">🔭</div><h3>Telescope fuzzy finder</h3><p><span class="kbd-hint">⌘K</span> jumps to commands, notebooks, tags, headings, themes. Prefixes <code>&gt;</code> <code>b</code> <code>t</code> <code>#</code> <code>h</code>.</p></div>
+      <div class="card spot reveal"><div class="ico">📝</div><h3>Code-first GFM editor</h3><p>CodeMirror 6 + sanitized preview, syntax highlight, copy-code buttons, slash menu, table assist, side-by-side &amp; distraction-free.</p></div>
+      <div class="card spot span2 reveal"><div class="ico">🌿</div><h3>Git sync — optional, yours</h3><p><code>~/devnote</code> is plain Markdown with frontmatter. Point at a private repo and sync: export → commit → pull → push. Newer <code>updatedAt</code> wins; losers preserved as <code>.conflict-&lt;device&gt;.md</code>. Airplane-mode fully usable. <a href="sync.html">Setup in 3 steps →</a></p>
+        <pre class="code" data-copy style="margin-top:12px"><code>~/devnote/engineering/sync-engine-a1b2c3d4.md
+~/devnote/personal/reading-list-9f8e7d6c.md
+~/devnote/.attachments/diagram.png</code></pre></div>
+      <div class="card spot reveal"><div class="ico">🕘</div><h3>Revisions &amp; templates</h3><p>Auto-snapshots on idle + note-switch with undoable restore. 6 built-in templates with date/UUID placeholders on <span class="kbd-hint">⌘T</span>.</p></div>
+      <div class="card spot reveal"><div class="ico">🎨</div><h3>7 themes, light + dark</h3><p>Nord, Dracula, Solarized, Catppuccin + system-follow. Code colors ride the same variables in editor and preview.</p></div>
+      <div class="card spot reveal"><div class="ico">⌨️</div><h3>Keyboard-first</h3><p>Every action is a <code>core:*</code> command with a remappable shortcut. Full map on the <a href="shortcuts.html">shortcuts page →</a></p></div>
+      <div class="card spot reveal"><div class="ico">🔒</div><h3>Private by default</h3><p>No account, no telemetry, zero required network calls. SQLite is an index — Markdown files are the truth.</p></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="sec-head reveal">
+      <span class="eyebrow">● Search</span>
+      <h2>Find anything in milliseconds.</h2>
+      <p>One query language across the whole library. Terms combine with AND; rank is title ×3, tags ×2, body ×1.</p>
+    </div>
+    <div class="split">
+      <div class="panel reveal">
+        <header data-tabs><button class="dot-tab on" data-tab="q">Query</button><button class="dot-tab" data-tab="cli">Benchmark</button></header>
+        <div class="body">
+          <div data-pane="q"><pre class="code" data-copy><code>typescript tag:Work status:Completed
+book:Engineering "conflict drill" -draft
+title:deploy body:TODO tag:rust</code></pre></div>
+          <div data-pane="cli" hidden><pre class="code" data-copy><code>$ pnpm bench
+
+✓ search 5k notes — mean 1.8ms, p99 3.5ms
+  gate: &lt;50ms … PASS</code></pre></div>
+        </div>
+      </div>
+      <div class="panel reveal">
+        <header><span class="dot-tab on">Ranking</span></header>
+        <div class="body"><p style="margin-top:0;color:var(--muted)">Pinned notes first, then score, then most recently updated. Matching lines shown as snippets; list renders 200 rows, virtualized beyond.</p>
+        <p><code>"exact phrase"</code> matches verbatim. <code>-term</code> excludes. One honest limitation: <b>no partial-match stemming</b> — <code>trin</code> won't find <code>string</code>. <a href="search.html">Full grammar →</a></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="sec-head reveal">
+      <span class="eyebrow">● Themes</span>
+      <h2>Seven themes. Zero eye-strain.</h2>
+      <p>Switch from Telescope (<span class="kbd-hint">⌘K</span> then <code>h</code>) or Preferences → Appearance. Light + dark from day one.</p>
+    </div>
+    <div class="themes">
+      <div class="theme-swatch reveal"><div class="prev" style="background:#0f172a;color:#e2e8f0"><span style="color:#60a5fa">fn</span> main() <span style="color:#64748b">…</span></div><div class="lbl"><span>Dark</span><span>default</span></div></div>
+      <div class="theme-swatch reveal"><div class="prev" style="background:#f8fafc;color:#0f172a;border-bottom:1px solid var(--border)"><span style="color:#2563eb">fn</span> main() <span style="color:#94a3b8">…</span></div><div class="lbl"><span>Light</span><span>default</span></div></div>
+      <div class="theme-swatch reveal"><div class="prev" style="background:#2e3440;color:#eceff4"><span style="color:#88c0d0">fn</span> main() <span style="color:#4c566a">…</span></div><div class="lbl"><span>Nord</span><span>dark</span></div></div>
+      <div class="theme-swatch reveal"><div class="prev" style="background:#282a36;color:#f8f8f2"><span style="color:#bd93f9">fn</span> main() <span style="color:#6272a4">…</span></div><div class="lbl"><span>Dracula</span><span>dark</span></div></div>
+      <div class="theme-swatch reveal"><div class="prev" style="background:#002b36;color:#839496"><span style="color:#268bd2">fn</span> main() <span style="color:#586e75">…</span></div><div class="lbl"><span>Solarized</span><span>dark</span></div></div>
+      <div class="theme-swatch reveal"><div class="prev" style="background:#1e1e2e;color:#cdd6f4"><span style="color:#cba6f7">fn</span> main() <span style="color:#6c7086">…</span></div><div class="lbl"><span>Catppuccin</span><span>mocha</span></div></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="sec-head reveal">
+      <span class="eyebrow">● Compare</span>
+      <h2>Cancel the subscription.</h2>
+      <p>devnote exists so a ~$5/mo hosted-sync fee isn't the price of a good Markdown notebook.</p>
+    </div>
+    <div class="table-wrap reveal"><table class="cmp">
+      <tr><th></th><th>devnote</th><th>Inkdrop</th><th>Notion</th><th>Obsidian</th></tr>
+      <tr><td>Price</td><td class="yes">$0 · MIT</td><td class="mid">~$5/mo</td><td class="mid">freemium</td><td class="mid">freemium</td></tr>
+      <tr><td>Works fully offline</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">limited</td><td class="yes">✓</td></tr>
+      <tr><td>Notes as plain Markdown</td><td class="yes">✓ ~/devnote</td><td class="no">DB + export</td><td class="no">blocks</td><td class="yes">✓</td></tr>
+      <tr><td>Git sync, no vendor cloud</td><td class="yes">✓</td><td class="no">hosted</td><td class="no">—</td><td class="mid">paid/add-on</td></tr>
+      <tr><td>Qualifier search</td><td class="yes">✓</td><td class="yes">✓</td><td class="mid">filters</td><td class="mid">plugins</td></tr>
+      <tr><td>Open source</td><td class="yes">✓ MIT</td><td class="no">proprietary</td><td class="no">—</td><td class="no">—</td></tr>
+    </table></div>
+  </section>
+
+  <section class="block">
+    <div class="sec-head reveal">
+      <span class="eyebrow">● Get started</span>
+      <h2>Running in under a minute.</h2>
+    </div>
+    <div class="split">
+      <div class="panel reveal"><header><span class="dot-tab on">macOS app</span></header><div class="body">
+        <div class="step"><span class="n">1</span><div>Download the <code>.dmg</code> from <a href="https://github.com/shubhscode/devnote/releases">Releases</a>, drag DevNote into <code>/Applications</code>.</div></div>
+        <div class="step"><span class="n">2</span><div>First launch: right-click → Open (unsigned build), or <code>xattr -cr /Applications/DevNote.app</code>.</div></div>
+        <div class="step"><span class="n">3</span><div>Notes land in <code>~/devnote</code>. Optional: add a private repo in Preferences → Git sync. <a href="install.html">Full guide →</a></div></div>
+      </div></div>
+      <div class="panel reveal"><header><span class="dot-tab on">From source</span></header><div class="body"><pre class="code" data-copy><code>git clone https://github.com/shubhscode/devnote.git
+cd devnote
+pnpm install
+pnpm dev        <span style="color:#64748b"># web on :5173</span>
+pnpm lint &amp;&amp; pnpm test &amp;&amp; pnpm build</code></pre></div></div>
+    </div>
+  </section>
+
+  <div class="cta reveal">
+    <h2>Own your notes. <span class="grad">Star the repo.</span></h2>
+    <p>MIT-licensed, no telemetry, no lock-in. If local-first software should win, give it a ★.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/shubhscode/devnote">★ Star on GitHub · <span data-stars>—</span></a>
+      <a class="btn btn-ghost" href="https://github.com/shubhscode/devnote/releases">Download</a>
+    </div>
+    <p style="margin-top:18px">
+      <a href="https://github.com/shubhscode/devnote"><img alt="GitHub stars" src="https://img.shields.io/github/stars/shubhscode/devnote?style=social"></a>
+      <a href="https://github.com/shubhscode/devnote"><img alt="GitHub forks" src="https://img.shields.io/github/forks/shubhscode/devnote?style=social"></a>
+      <a href="https://github.com/shubhscode/devnote/blob/main/LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/shubhscode/devnote"></a>
+      <a href="https://github.com/shubhscode/devnote/releases"><img alt="latest release" src="https://img.shields.io/github/v/release/shubhscode/devnote"></a>
+    </p>
   </div>
-
-  <h2>Keyboard-first</h2>
-  <table>
-    <tr><th>Action</th><th>Shortcut</th></tr>
-    <tr><td>Telescope (fuzzy finder)</td><td><kbd>mod K</kbd></td></tr>
-    <tr><td>New note / duplicate</td><td><kbd>mod N</kbd> / <kbd>mod D</kbd></td></tr>
-    <tr><td>Templates</td><td><kbd>mod T</kbd></td></tr>
-    <tr><td>Edit / preview / side-by-side</td><td><kbd>mod E</kbd> / <kbd>mod P</kbd></td></tr>
-    <tr><td>Distraction-free</td><td><kbd>mod shift D</kbd></td></tr>
-    <tr><td>Sidebar toggle</td><td><kbd>mod /</kbd></td></tr>
-    <tr><td>Preferences</td><td><kbd>mod ,</kbd></td></tr>
-    <tr><td>Note history back / forward</td><td><kbd>mod ←</kbd> / <kbd>mod →</kbd></td></tr>
-  </table>
-  <p><code>mod</code> = Cmd on macOS, Ctrl elsewhere.</p>
-
-  <h2>Open source</h2>
-  <p>MIT licensed. <a href="https://github.com/shubhscode/devnote">Source on GitHub</a> — Vite + React + Tauri 2 + TypeScript. No telemetry, no required network calls.</p>
 </div>
-<footer>devnote · MIT · <a href="https://github.com/shubhscode/devnote">github.com/shubhscode/devnote</a></footer>
+
+<footer class="site"><div class="foot-grid">
+  <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span><br>Local-first Markdown notebook. No subscription.</div>
+  <nav><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html">Search</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a><a href="https://github.com/shubhscode/devnote/releases">Releases</a></nav>
+</div></footer>
+<script src="app.js"></script>
 </body>
 </html>
