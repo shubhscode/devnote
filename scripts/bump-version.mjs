@@ -33,12 +33,18 @@ if (current.size !== 1) {
   console.error(`version drift detected: ${[...current].join(', ')}. Fix by hand first.`);
   process.exit(1);
 }
+const prev = [...current][0];
 
 for (const f of jsonFiles) {
   const p = join(ROOT, f);
-  const data = JSON.parse(readFileSync(p, 'utf8'));
-  data.version = version;
-  writeFileSync(p, `${JSON.stringify(data, null, 2)}\n`);
+  const raw = readFileSync(p, 'utf8');
+  // String replace (not re-serialize) — preserves array layout/formatting.
+  const next = raw.replace(`"version": "${prev}"`, `"version": "${version}"`);
+  if (next === raw) {
+    console.error(`version field not found in ${f}. No files touched.`);
+    process.exit(1);
+  }
+  writeFileSync(p, next);
 }
 writeFileSync(
   join(ROOT, 'apps/desktop/src-tauri/Cargo.toml'),
