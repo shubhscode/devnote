@@ -6,3 +6,4 @@ export * from './slash';
 export * from './table';
 export * from './complete';
 export * from './codeblock';
+export * from './links';

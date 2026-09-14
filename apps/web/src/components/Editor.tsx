@@ -3,9 +3,9 @@ import {
   Archive, Copy, Edit as EditIcon, Eye, History,
   Layout, More, Pin, Plus, Trash, X,
 } from 'reicon-react';
-import { allTags, BUNDLED_THEMES, getTheme, notebookPath, noteFilename, noteToMarkdown, wordStats } from '@devnote/core';
+import { allTags, backlinksFor, BUNDLED_THEMES, getTheme, notebookPath, noteFilename, noteToMarkdown, resolveWikilink, wordStats } from '@devnote/core';
 import type { EditorView } from '@devnote/editor';
-import { EditorView as CMView, extractToc } from '@devnote/editor';
+import { EditorView as CMView, extractToc, setLinkTitles } from '@devnote/editor';
 import type { MutableRefObject } from 'react';
 import { exportHtmlDoc, setTaskChecked } from '@devnote/preview';
 import { useDevnote } from '../lib/store';
@@ -55,11 +55,29 @@ export default function Editor(props: EditorProps) {
   const duplicateNote = useDevnote((s) => s.duplicate);
   const trashNote = useDevnote((s) => s.trash);
   const themeId = useDevnote((s) => s.settings.theme);
+  const openNoteById = useDevnote((s) => s.openNote);
+  const patchNotice = useDevnote((s) => s.patch);
   const notesForTags = useDevnote((s) => s.notes);
   const tagSuggestions = useMemo(
     () => allTags(notesForTags).filter((t) => !(note?.tags.includes(t) ?? false)),
     [notesForTags, note],
   );
+  // Feed the editor's [[ title registry (completer reads it synchronously).
+  const linkTitles = useMemo(() => {
+    const out: string[] = [];
+    for (const n of notesForTags) {
+      if (!n.trashed && n.title.trim() !== '') out.push(n.title);
+    }
+    return out;
+  }, [notesForTags]);
+  useEffect(() => {
+    setLinkTitles(linkTitles);
+  }, [linkTitles]);
+  const backlinks = useMemo(
+    () => (note === null ? [] : backlinksFor(note.id, notesForTags)),
+    [note, notesForTags],
+  );
+  const [linksOpen, setLinksOpen] = useState(false);
   const stats = useMemo(() => wordStats(note?.body ?? ''), [note]);
   const headings = useMemo(
     () => extractToc(note?.body ?? '').filter((e) => e.kind === 'heading'),
@@ -145,6 +163,12 @@ export default function Editor(props: EditorProps) {
   const jumpToHeading = (headingIndex: number) => {
     const entry = headings[headingIndex];
     if (entry) jumpToPos(entry.pos);
+  };
+
+  const openWikiLink = (target: string) => {
+    const hit = resolveWikilink(target, notesForTags);
+    if (hit) openNoteById(hit.id, false);
+    else patchNotice({ notice: `No note titled "${target}"` });
   };
 
   const download = (filename: string, content: string, type: string) => {
@@ -341,6 +365,31 @@ export default function Editor(props: EditorProps) {
         )}
       </div>
 
+      <div className="flex items-center gap-1 border-b border-[var(--border)] px-4 py-1.5">
+        <button
+          className="rounded px-1 py-0.5 text-xs opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          title={backlinks.length === 0 ? 'No notes link here yet — reference this note with [[title]]' : 'Notes linking here'}
+          onClick={() => setLinksOpen((v) => !v)}
+        >
+          Linked from · {backlinks.length}
+        </button>
+      </div>
+      {linksOpen && backlinks.length > 0 && (
+        <div className="border-b border-[var(--border)] px-4 py-1">
+          {backlinks.map((b) => (
+            <button
+              key={b.noteId}
+              className="block w-full truncate rounded px-1 py-1 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              title={`Open ${b.title} (${b.count} link${b.count === 1 ? '' : 's'})`}
+              onClick={() => openNoteById(b.noteId, false)}
+            >
+              {b.title === '' ? 'Untitled' : b.title}
+              <span className="opacity-50"> · {b.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1">
         {showEditor && (
           <div className={`flex min-h-0 flex-col px-4 py-1 ${mode === 'split' ? 'w-1/2 border-r border-[var(--border)]' : 'flex-1'}`}>
@@ -382,7 +431,7 @@ export default function Editor(props: EditorProps) {
         {(mode === 'preview' || mode === 'split') && (
           <div className={`min-h-0 overflow-y-auto px-5 py-3 ${mode === 'split' ? 'w-1/2' : 'flex-1'}`}>
             <Suspense fallback={<div className="py-8 text-center text-sm opacity-50">Rendering preview…</div>}>
-              <PreviewView markdown={note.body} onTaskToggle={toggleTask} onHeadingClick={jumpToHeading} />
+              <PreviewView markdown={note.body} onTaskToggle={toggleTask} onHeadingClick={jumpToHeading} onWikiLink={openWikiLink} />
             </Suspense>
           </div>
         )}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { isColorCode, renderMarkdown } from '@devnote/preview';
+import { useDevnote } from '../lib/store';
 // NOTE: no highlight.js stylesheet import — token colors come from our own
 // theme-variable rules in index.css (pastel on dark, saturated on light).
 
@@ -9,6 +10,8 @@ interface Props {
   onTaskToggle?: (index: number, checked: boolean) => void;
   /** Preview heading clicked (index = TOC heading order). */
   onHeadingClick?: (index: number) => void;
+  /** Wikilink clicked (target title as written). */
+  onWikiLink?: (target: string) => void;
 }
 
 /**
@@ -18,7 +21,21 @@ interface Props {
  */
 export default function PreviewView(props: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const html = useMemo(() => renderMarkdown(props.markdown), [props.markdown]);
+  // Lowercased live titles — known wikilink targets (broken ones flagged).
+  const notes = useDevnote((s) => s.notes);
+  const linkTargets = useMemo(() => {
+    const set = new Set<string>();
+    for (const n of notes) {
+      if (n.trashed) continue;
+      const t = n.title.trim().toLowerCase();
+      if (t !== '') set.add(t);
+    }
+    return set;
+  }, [notes]);
+  const html = useMemo(
+    () => renderMarkdown(props.markdown, { linkTargets }),
+    [props.markdown, linkTargets],
+  );
 
   useEffect(() => {
     const root = hostRef.current;
@@ -58,9 +75,15 @@ export default function PreviewView(props: Props) {
   // Delegated clicks on sanitized output: task checkboxes + heading anchors.
   useEffect(() => {
     const root = hostRef.current;
-    if (!root || (!props.onTaskToggle && !props.onHeadingClick)) return;
+    if (!root || (!props.onTaskToggle && !props.onHeadingClick && !props.onWikiLink)) return;
     const onClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+      const link = target.closest('a[data-wikilink]') as HTMLAnchorElement | null;
+      if (link && props.onWikiLink) {
+        e.preventDefault();
+        props.onWikiLink(link.dataset.wikilink ?? '');
+        return;
+      }
       const box = target.closest('input[data-task-index]') as HTMLInputElement | null;
       if (box && props.onTaskToggle) {
         props.onTaskToggle(Number(box.dataset.taskIndex), box.checked);
@@ -73,7 +96,7 @@ export default function PreviewView(props: Props) {
     };
     root.addEventListener('click', onClick);
     return () => root.removeEventListener('click', onClick);
-  }, [html, props.onTaskToggle, props.onHeadingClick]);
+  }, [html, props.onTaskToggle, props.onHeadingClick, props.onWikiLink]);
 
   // Sanitized by @devnote/preview — safe to inject (AGENTS.md §5).
   return <div ref={hostRef} className="markdown-body" dangerouslySetInnerHTML={{ __html: html }} />;

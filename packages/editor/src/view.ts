@@ -21,6 +21,7 @@ import { EditorView, drawSelection, dropCursor, highlightActiveLine, keymap, lin
 import { tags as hlTags } from '@lezer/highlight';
 import { codeBlockBox } from './codeblock';
 import { codeCompleter, inCodeBlock } from './complete';
+import { linkCompleter } from './links';
 import { insertLink, toggleAlertBlock, toggleFenceBlock, toggleLinePrefix, toggleOrdered, toggleTask, toggleWrap, type AlertKind, type Edit } from './text';
 import { filterSlashItems, type SlashItem } from './slash';
 import { advanceCell, continueTableRow, isTableRow, type TableEdit } from './table';
@@ -157,8 +158,8 @@ function slashCompleter(ctx: CompletionContext): CompletionResult | null {
 }
 
 export function slashCommands(): Extension {
-  // Slash blocks + code suggestions share one completion menu.
-  return autocompletion({ override: [slashCompleter, codeCompleter] });
+  // Slash blocks + wikilinks + code suggestions share one completion menu.
+  return autocompletion({ override: [slashCompleter, linkCompleter, codeCompleter] });
 }
 
 // ---------- markdown tables ----------

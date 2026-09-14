@@ -147,6 +147,17 @@ html.tauri #root {
 .dark .markdown-body a {
   color: #4493f8;
 }
+/* Wikilinks (2.2): internal note links; broken targets read as warnings. */
+.markdown-body a.wikilink {
+  cursor: pointer;
+}
+.markdown-body a.wikilink[data-broken='true'] {
+  color: #b45309;
+  text-decoration: underline dotted;
+}
+.dark .markdown-body a.wikilink[data-broken='true'] {
+  color: #f59e0b;
+}
 .markdown-body code:not(pre code) {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12.5px;
