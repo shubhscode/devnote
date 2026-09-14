@@ -12,6 +12,7 @@ import {
   descendantIds,
   duplicateAsCustom,
   duplicateNote,
+  isQuotaError,
   markTemplateUsed,
   mergeTags as mergeTagNotes,
   moveNotes as moveNotesCore,
@@ -44,7 +45,19 @@ import {
   syncCommitMessage,
 } from '@devnote/sync';
 import { localStorageAdapter } from '../storage';
-import { loadPersisted } from './persist';
+import {
+  RECENTS_KEY,
+  REVISIONS_KEY,
+  SETTINGS_KEY,
+  STORAGE_KEY,
+  TEMPLATES_KEY,
+  loadDB,
+  loadPersisted,
+  loadRecents,
+  loadRevisions,
+  loadSettings,
+  loadTemplates,
+} from './persist';
 import { computeVisible } from './select';
 import type { SearchScope, Selection, Settings } from './types';
 
@@ -194,7 +207,7 @@ function defaultNotebookIdFor(notebooks: Notebook[], settings: Settings): string
 
 export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
   const initial = loadPersisted(adapter);
-  return create<DevnoteState & DataActions & NavActions & RevActions & LibraryActions & SyncActions & PatchAction>()((set, get) => {
+  const api = create<DevnoteState & DataActions & NavActions & RevActions & LibraryActions & SyncActions & PatchAction>()((set, get) => {
     const fail = (e: unknown) => {
       set({ notice: e instanceof Error ? e.message : 'Something went wrong' });
     };
@@ -849,6 +862,100 @@ export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter
         }
       },
     };
+  });
+
+  wirePersistence(api, adapter, initial.corruptedKeys);
+  return api;
+}
+
+/**
+ * Persistence + cross-tab wiring (Track 1.1: lives with the store, not in a
+ * mounted hook — panes subscribe without owning saves). Mirrors the old
+ * Batch A semantics: debounced db writes, immediate slice writes, quarantine
+ * on corrupt payloads, loud quota errors, pagehide flush.
+ */
+function wirePersistence(api: DevnoteStoreApi, adapter: StorageAdapter, corruptedKeys: string[]) {
+  if (corruptedKeys.length > 0) {
+    api.setState({
+      notice: `Recovered from corrupt saved data (${corruptedKeys.join(', ')}). Bad copy kept as backup — export a backup from Preferences.`,
+    });
+  }
+
+  let prev = api.getState();
+  let dbTimer: ReturnType<typeof setTimeout> | undefined;
+  api.subscribe((s) => {
+    // DB slice: debounced (stringifying thousands of notes per keystroke janks).
+    if (s.notebooks !== prev.notebooks || s.notes !== prev.notes) {
+      if (dbTimer !== undefined) clearTimeout(dbTimer);
+      dbTimer = setTimeout(() => {
+        try {
+          const cur = api.getState();
+          adapter.setItem(STORAGE_KEY, JSON.stringify({ notebooks: cur.notebooks, notes: cur.notes }));
+        } catch (e) {
+          // Quota/privacy mode — session-only. Quota gets a loud warning; privacy stays silent.
+          if (isQuotaError(e)) {
+            api.setState({ notice: 'Storage full — changes kept for this session only. Export a backup or prune revision history.' });
+          }
+        }
+      }, 400);
+    }
+    if (s.settings !== prev.settings) {
+      try {
+        adapter.setItem(SETTINGS_KEY, JSON.stringify(s.settings));
+      } catch (e) {
+        if (isQuotaError(e)) api.setState({ notice: 'Storage full — settings kept for this session only.' });
+      }
+    }
+    if (s.customTemplates !== prev.customTemplates) {
+      try {
+        adapter.setItem(TEMPLATES_KEY, JSON.stringify(s.customTemplates));
+      } catch { /* ignore */ }
+    }
+    if (s.templateRecents !== prev.templateRecents) {
+      try {
+        adapter.setItem(RECENTS_KEY, JSON.stringify(s.templateRecents));
+      } catch { /* ignore */ }
+    }
+    if (s.revisions !== prev.revisions) {
+      try {
+        adapter.setItem(REVISIONS_KEY, JSON.stringify(s.revisions));
+      } catch { /* ignore */ }
+    }
+    prev = s;
+  });
+
+  if (typeof window === 'undefined') return;
+
+  // Never lose the trailing debounced write on tab close.
+  window.addEventListener('pagehide', () => {
+    try {
+      const cur = api.getState();
+      adapter.setItem(STORAGE_KEY, JSON.stringify({ notebooks: cur.notebooks, notes: cur.notes }));
+    } catch { /* ignore */ }
+  });
+
+  // Cross-tab: another tab wrote our keys — reload that slice, keep typing safe.
+  window.addEventListener('storage', (e: StorageEvent) => {
+    if (e.key === null || e.newValue === null) return;
+    try {
+      if (e.key === STORAGE_KEY) {
+        const db = loadDB(adapter);
+        if (db.corrupted) return;
+        api.setState({ notebooks: db.value.notebooks, notes: db.value.notes, notice: 'Notes updated from another tab' });
+      } else if (e.key === SETTINGS_KEY) {
+        const loaded = loadSettings(adapter);
+        if (!loaded.corrupted) api.setState({ settings: loaded.value });
+      } else if (e.key === TEMPLATES_KEY) {
+        const t = loadTemplates(adapter);
+        if (!t.corrupted) api.setState({ customTemplates: t.value });
+      } else if (e.key === RECENTS_KEY) {
+        const r = loadRecents(adapter);
+        if (!r.corrupted) api.setState({ templateRecents: r.value });
+      } else if (e.key === REVISIONS_KEY) {
+        const r = loadRevisions(adapter);
+        if (!r.corrupted) api.setState({ revisions: r.value });
+      }
+    } catch { /* keep current state on bad cross-tab payload */ }
   });
 }
 
