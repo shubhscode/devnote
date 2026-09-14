@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fileUpdatedAt, readFrontmatter } from '@devnote/core';
-import { conflictPath, resolveConflict, sanitizeDevice } from './conflict';
+import { conflictPath, isConflictTitle, resolveConflict, sanitizeDevice } from './conflict';
 
 const NOW = '2026-09-12T12:00:00.000Z';
 
@@ -35,6 +35,16 @@ describe('conflictPath', () => {
   it('inserts suffix before extension, keeps dir', () => {
     expect(conflictPath('Notes/foo-abc12345.md', 'laptop')).toBe('Notes/foo-abc12345.conflict-laptop.md');
     expect(conflictPath('a.md', 'Laptop 2')).toBe('a.conflict-laptop-2.md');
+  });
+});
+
+describe('isConflictTitle', () => {
+  it('matches preserved-loser titles only', () => {
+    expect(isConflictTitle('Notes (conflict laptop)')).toBe(true);
+    expect(isConflictTitle('Untitled (conflict my-phone)')).toBe(true);
+    expect(isConflictTitle('Notes')).toBe(false);
+    expect(isConflictTitle('Notes (conflict)')).toBe(false);
+    expect(isConflictTitle('(conflict laptop) extra')).toBe(false);
   });
 });
 

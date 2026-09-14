@@ -32,6 +32,11 @@ export function conflictPath(path: string, device: string): string {
   return `${dir}${stem}.conflict-${sanitizeDevice(device)}.md`;
 }
 
+/** True for preserved-loser titles (`Title (conflict <device>)`). */
+export function isConflictTitle(title: string): boolean {
+  return /\(conflict [^()]+\)\s*$/.test(title);
+}
+
 /**
  * Pick a winner by frontmatter `updatedAt` and build a preserved loser note.
  * `ours` is the local file (stage 2), `theirs` the incoming one (stage 3).

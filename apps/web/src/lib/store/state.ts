@@ -40,6 +40,7 @@ import type { SyncState } from '@devnote/sync';
 import {
   classifySyncState,
   conflictedPaths,
+  isConflictTitle,
   parsePorcelain,
   resolveConflict,
   syncCommitMessage,
@@ -91,6 +92,8 @@ export interface DevnoteState {
   syncDevice: string;
   remoteUrl: string | null;
   syncBusy: boolean;
+  /** Preserved conflict-loser note ids from the last sync (banner links). */
+  conflictNoteIds: string[];
   /** Keys whose stored payload was corrupt (quarantined on load). */
   corruptedKeys: string[];
 }
@@ -251,6 +254,7 @@ export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter
       syncDevice: 'device',
       remoteUrl: null,
       syncBusy: false,
+      conflictNoteIds: [],
       corruptedKeys: initial.corruptedKeys,
 
       newNote: () => {
@@ -805,7 +809,7 @@ export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter
       /** Full sync: export → commit → pull → resolve conflicts → push → import. */
       syncNow: async () => {
         if (get().syncBusy) return;
-        set({ syncBusy: true });
+        set({ syncBusy: true, conflictNoteIds: [] });
         try {
           const {
             gitStatusRaw, gitCommitAll, gitPull, gitPush,
@@ -865,6 +869,11 @@ export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter
           const filesAfter = await mirrorReadFiles();
           const imp = planImport(get().notes, get().notebooks, filesAfter);
           set({ notes: imp.notes, notebooks: imp.notebooks });
+          set({
+            conflictNoteIds: imp.notes
+              .filter((n) => !n.trashed && isConflictTitle(n.title))
+              .map((n) => n.id),
+          });
           if (imp.adoptions.length > 0) {
             await mirrorSync(imp.adoptions.map((a) => ({ path: a.path, content: a.content })), []);
           }

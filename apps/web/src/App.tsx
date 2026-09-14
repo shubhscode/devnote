@@ -64,6 +64,8 @@ export default function App() {
   const mirrorDir = useDevnote((s) => s.mirrorDir);
   const remoteUrl = useDevnote((s) => s.remoteUrl);
   const syncBusy = useDevnote((s) => s.syncBusy);
+  const conflictNoteIds = useDevnote((s) => s.conflictNoteIds);
+  const openNoteById = useDevnote((s) => s.openNote);
   const sidebarWidth = useDevnote((s) => s.settings.sidebarWidth);
   const listWidth = useDevnote((s) => s.settings.listWidth);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -484,6 +486,11 @@ export default function App() {
         <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
           <span className="font-medium">Sync conflict</span>
           <span className="flex-1 opacity-80">Newer <code>updatedAt</code> won; loser saved as a reviewable note.</span>
+          {conflictNoteIds.length > 0 && conflictNoteIds[0] !== undefined && (
+            <button className="rounded bg-red-100 px-2 py-1 text-xs hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800" onClick={() => openNoteById(conflictNoteIds[0] as string, false)}>
+              Review loser{conflictNoteIds.length > 1 ? ` (${conflictNoteIds.length})` : ''}
+            </button>
+          )}
           <button className="rounded bg-red-100 px-2 py-1 text-xs hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800" onClick={syncNow}>
             Resolve & sync
           </button>
