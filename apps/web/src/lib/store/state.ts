@@ -189,6 +189,11 @@ export interface SyncActions {
   importMirror: () => Promise<void>;
   /** Silent disk→store import for the file watcher (notice only on change). */
   refreshFromDisk: () => Promise<void>;
+  /**
+   * Save pasted/dropped image bytes to `.attachments/`.
+   * Resolves the mirror-relative path, or null (with notice) on rejection.
+   */
+  addAttachment: (noteId: string, fileName: string, mime: string, bytes: Uint8Array) => Promise<string | null>;
   refreshSyncState: () => Promise<void>;
   syncNow: () => Promise<void>;
 }
@@ -819,8 +824,32 @@ export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter
         }
       },
 
+      /**
+       * Save pasted/dropped image bytes. Validates in core, writes via the
+       * desktop app, refreshes the git status dot (new untracked file).
+       */
+      addAttachment: async (noteId, fileName, mime, bytes) => {
+        const { attachmentPath, checkAttachment } = await import('@devnote/core');
+        const check = checkAttachment(fileName, mime, bytes.length);
+        if (!check.ok) {
+          set({ notice: check.reason ?? 'Image rejected' });
+          return null;
+        }
+        try {
+          const { saveAttachmentBytes } = await import('../attachments');
+          const nonce = Date.now().toString(36);
+          const path = await saveAttachmentBytes(attachmentPath(noteId, nonce, fileName), bytes);
+          await get().refreshSyncState();
+          return path;
+        } catch (e) {
+          fail(e);
+          return null;
+        }
+      },
+
       /** Refresh sync state from git status. */
-      refreshSyncState: async () => {        try {
+      refreshSyncState: async () => {
+        try {
           const { gitAvailable, gitStatusRaw, gitGetRemote, gitDeviceName } = await import('../sync');
           const hasGit = await gitAvailable();
           if (!hasGit) { set({ syncState: 'no-git' }); return; }

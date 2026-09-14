@@ -8,6 +8,7 @@ export * from './templates';
 export * from './revisions';
 export * from './fuzzy';
 export * from './mirror';
+export * from './attachments';
 export * from './wordstats';
 export * from './links';
 export * from './themes';
