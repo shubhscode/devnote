@@ -30,3 +30,11 @@ test('conflict banner links the preserved loser note', async ({ page }) => {
   await page.getByRole('button', { name: /Review loser/ }).click();
   await expect(page.getByPlaceholder('Untitled')).toHaveValue('Roadmap (conflict laptop)');
 });
+
+test('restore stays disabled with an honest reason in browsers', async ({ page }) => {
+  await page.getByTitle('Preferences (mod+,)').click();
+  await page.getByText('Sync', { exact: true }).click();
+  const btn = page.getByRole('button', { name: 'Restore from backup' });
+  await expect(btn).toBeDisabled();
+  await expect(btn).toHaveAttribute('title', /desktop app/);
+});

@@ -82,3 +82,18 @@ export function backupZip(): Promise<BackupInfo> {
 export function restoreZip(zipPath: string): Promise<number> {
   return invoke<number>('restore_zip', { zipPath });
 }
+
+/**
+ * Native .zip picker (desktop only). Null when cancelled — or when running
+ * in a plain browser, where no native picker exists.
+ */
+export async function pickBackupFile(): Promise<string | null> {
+  if (!isTauri()) return null;
+  const { open } = await import('@tauri-apps/plugin-dialog');
+  const picked = await open({
+    multiple: false,
+    directory: false,
+    filters: [{ name: 'Backup', extensions: ['zip'] }],
+  });
+  return typeof picked === 'string' ? picked : null;
+}

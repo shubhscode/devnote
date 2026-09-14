@@ -22,6 +22,8 @@ interface Props {
   onSetRemote: (url: string) => void;
   onBackupZip: () => void;
   onRestoreZip: () => void;
+  /** False in browsers (no native file picker) — restore stays disabled. */
+  canPickFiles: boolean;
   onClose: () => void;
 }
 
@@ -234,13 +236,18 @@ export default function PreferencesDialog(props: Props) {
 
                 <Section
                   title="Backup & restore"
-                  desc={<>Zip export of all notes. Restore overwrites <code>~/devnote</code>.</>}
+                  desc={<>Zip export of all notes. Restore overwrites <code>~/devnote</code>.{!props.canPickFiles && <> Restore needs the desktop app.</>}</>}
                 >
                   <div className="flex gap-2">
                     <button className={BTN_SECONDARY} onClick={props.onBackupZip}>
                       Export backup (.zip)
                     </button>
-                    <button className={BTN_SECONDARY} onClick={props.onRestoreZip}>
+                    <button
+                      className={BTN_SECONDARY}
+                      onClick={props.onRestoreZip}
+                      disabled={!props.canPickFiles}
+                      title={props.canPickFiles ? 'Pick a .zip backup to restore' : 'Restore needs the desktop app — browsers cannot read .zip files from disk'}
+                    >
                       Restore from backup
                     </button>
                   </div>

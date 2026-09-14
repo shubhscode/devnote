@@ -86,6 +86,7 @@ export default function App() {
   const [restoreIds, setRestoreIds] = useState<string[] | null>(null);
   const [moveIds, setMoveIds] = useState<string[] | null>(null);
   const [destroyIds, setDestroyIds] = useState<string[] | null>(null);
+  const [restoreZipPath, setRestoreZipPath] = useState<string | null>(null);
   const [notebookDelete, setNotebookDelete] = useState<{ id: string; name: string } | null>(null);
   const [tagDelete, setTagDelete] = useState<string | null>(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
@@ -605,6 +606,30 @@ export default function App() {
         />
       )}
 
+      {restoreZipPath !== null && (
+        <ConfirmDialog
+          title="Restore from backup?"
+          message={`Restore overwrites ~/devnote with ${restoreZipPath}. Current notes stay in the app until the next export.`}
+          confirmLabel="Restore"
+          danger
+          onConfirm={() => {
+            const path = restoreZipPath;
+            setRestoreZipPath(null);
+            void (async () => {
+              try {
+                const { restoreZip } = await import('./lib/sync');
+                const count = await restoreZip(path);
+                api.getState().patch({ notice: `Restore done: ${count} file${count === 1 ? '' : 's'} written — importing…` });
+                await importMirror();
+              } catch (e) {
+                api.getState().patch({ notice: e instanceof Error ? e.message : 'Restore failed' });
+              }
+            })();
+          }}
+          onClose={() => setRestoreZipPath(null)}
+        />
+      )}
+
       {notebookDelete !== null && (
         <ConfirmDialog
           title="Delete notebook?"
@@ -682,19 +707,16 @@ export default function App() {
               api.getState().patch({ notice: e instanceof Error ? e.message : 'Backup failed' });
             }
           }}
+          canPickFiles={isTauri()}
           onRestoreZip={async () => {
             try {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.accept = '.zip';
-              input.onchange = async () => {
-                const file = input.files?.[0];
-                if (!file) return;
-                // Tauri can't read browser File directly — use invoke with path
-                // For now, show a notice pointing to the zip path
-                api.getState().patch({ notice: 'Restore: place the zip in ~/devnote-backup.zip and click Restore' });
-              };
-              input.click();
+              const { pickBackupFile } = await import('./lib/sync');
+              const picked = await pickBackupFile();
+              if (picked === null) {
+                if (!isTauri()) api.getState().patch({ notice: 'Restore needs the desktop app — browsers cannot read .zip files from disk.' });
+                return;
+              }
+              setRestoreZipPath(picked);
             } catch (e) {
               api.getState().patch({ notice: e instanceof Error ? e.message : 'Restore failed' });
             }
