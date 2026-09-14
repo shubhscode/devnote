@@ -148,15 +148,17 @@ export default function NoteList(props: NoteListProps) {
       }}
     >
       <div className="flex items-center gap-1.5 border-b border-[var(--border)] p-2">
-        <button className="rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Toggle sidebar (mod+/)" onClick={props.onToggleSidebar}>
+        <button className="focus-ring rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Toggle sidebar (mod+/)" aria-label="Toggle sidebar" onClick={props.onToggleSidebar}>
           <SidebarIcon size={16} />
         </button>
-        <button className="rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Telescope: commands, notebooks, tags (mod+K)" onClick={props.onOpenTelescope}>
+        <button className="focus-ring rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Telescope: commands, notebooks, tags (mod+K)" aria-label="Open Telescope" onClick={props.onOpenTelescope}>
           <Command size={16} />
         </button>
         <button
-          className="rounded p-1.5 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-800"
+          className="focus-ring rounded p-1.5 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-800"
           title={isTrash ? 'Scope fixed to Trash' : scope === 'global' ? 'Global search: all notebooks (click for notebook-only)' : 'Filtering current notebook (click for global search)'}
+          aria-label={isTrash ? 'Search scope: Trash (fixed)' : scope === 'global' ? 'Search scope: global (switch to notebook-only)' : 'Search scope: notebook-only (switch to global)'}
+          aria-pressed={scope === 'global'}
           onClick={toggleScope}
           disabled={isTrash}
         >
@@ -174,7 +176,7 @@ export default function NoteList(props: NoteListProps) {
             className="w-full rounded bg-[var(--bg-sunken)] py-1.5 pl-7 pr-2 text-sm outline-none"
           />
         </div>
-        <button className="rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="New note (mod+N)" onClick={newNote}>
+        <button className="focus-ring rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="New note (mod+N)" aria-label="New note" onClick={newNote}>
           <Plus size={16} />
         </button>
       </div>

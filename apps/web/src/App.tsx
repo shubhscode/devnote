@@ -658,6 +658,8 @@ export default function App() {
       <AnimatePresence>
         {notice !== null && (
           <motion.div
+            role="status"
+            aria-live="polite"
             initial={{ opacity: 0, y: 12, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 8, x: '-50%' }}

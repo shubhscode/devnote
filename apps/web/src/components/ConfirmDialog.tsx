@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AlertTriangle } from 'reicon-react';
+import { useFocusTrap } from '../lib/focusTrap';
 
 interface ConfirmDialogProps {
   title: string;
@@ -16,6 +17,8 @@ export default function ConfirmDialog(props: ConfirmDialogProps) {
   const { danger = false } = props;
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef);
 
   useEffect(() => {
     (danger ? cancelRef : confirmRef).current?.focus();
@@ -39,6 +42,7 @@ export default function ConfirmDialog(props: ConfirmDialogProps) {
         role="alertdialog"
         aria-modal="true"
         aria-label={props.title}
+        ref={panelRef}
         className="w-96 max-w-full rounded-lg bg-[var(--bg-raised)] p-4 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >

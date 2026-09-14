@@ -3,6 +3,7 @@ import { CloseCircle, Copy, Edit, Plus, Trash } from 'reicon-react';
 import { parseTemplateBody, renderTemplateText, stripInstructionBlocks } from '@devnote/core';
 import type { Template } from '@devnote/core';
 import ConfirmDialog from './ConfirmDialog';
+import { useFocusTrap } from '../lib/focusTrap';
 
 // Preview stack is already code-split — reuse it here.
 const PreviewView = lazy(() => import('./PreviewView'));
@@ -36,6 +37,8 @@ export default function TemplatePicker(props: Props) {
   const [editing, setEditing] = useState<EditDraft | null>(null);
   const [pendingDelete, setPendingDelete] = useState(false);
   const filterRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef);
 
   useEffect(() => {
     filterRef.current?.focus();
@@ -165,6 +168,10 @@ export default function TemplatePicker(props: Props) {
         />
       )}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Choose a template"
+        ref={panelRef}
         className="flex h-[480px] w-[680px] max-w-[92vw] flex-col rounded-lg bg-[var(--bg-raised)] shadow-xl"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {

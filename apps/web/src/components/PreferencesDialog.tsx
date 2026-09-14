@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CloseCircle, Edit, Keyboard, Palette, Refresh, Sliders } from 'reicon-react';
 import { BUNDLED_THEMES, notebookPath } from '@devnote/core';
 import type { Notebook, NoteSortKey } from '@devnote/core';
 import { COMMAND_META } from '../lib/commands';
 import { modLabel } from '../lib/keys';
+import { useFocusTrap } from '../lib/focusTrap';
 import type { Settings } from '../lib/store';
 
 interface Props {
@@ -83,6 +84,8 @@ const BTN_PRIMARY =
 export default function PreferencesDialog(props: Props) {
   const [tab, setTab] = useState<Tab>('general');
   const [shortcutFilter, setShortcutFilter] = useState('');
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef);
   const { settings } = props;
 
   useEffect(() => {
@@ -104,6 +107,10 @@ export default function PreferencesDialog(props: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={props.onClose}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Preferences"
+        ref={panelRef}
         className="flex h-[480px] w-[640px] max-w-[94vw] flex-col rounded-xl bg-[var(--bg-raised)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >

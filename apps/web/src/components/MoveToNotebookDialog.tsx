@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { CloseCircle, Notebook as NotebookIcon } from 'reicon-react';
 import { notebookPath } from '@devnote/core';
 import type { Notebook as NotebookType } from '@devnote/core';
+import { useFocusTrap } from '../lib/focusTrap';
 
 interface Props {
   notebooks: NotebookType[];
@@ -12,6 +13,8 @@ interface Props {
 
 /** Move-to-Notebook dialog for restoring trashed notes. */
 export default function MoveToNotebookDialog(props: Props) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef);
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key === 'Escape') props.onClose();
@@ -28,6 +31,7 @@ export default function MoveToNotebookDialog(props: Props) {
       <div
         role="dialog"
         aria-modal="true"
+        ref={panelRef}
         aria-label={`Move ${props.count} note${props.count === 1 ? '' : 's'} to a notebook`}
         className="w-80 rounded-lg bg-[var(--bg-raised)] p-4 shadow-xl"
         onClick={(e) => e.stopPropagation()}

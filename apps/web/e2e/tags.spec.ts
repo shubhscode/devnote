@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// Tag management: sidebar hover actions rename a tag across notes + delete asks first.
+// Tag management: sidebar row menus rename a tag across notes + delete asks first.
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -10,9 +10,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('rename tag from sidebar updates list + filter', async ({ page }) => {
-  // Seed note carries #meta. Hover reveals row actions.
-  await page.getByTitle('Filter: tag:meta').hover();
-  await page.getByTitle('Rename #meta').click();
+  // Seed note carries #meta. Row actions live behind the … menu (no hover needed).
+  await page.getByRole('button', { name: 'Tag actions for #meta' }).click();
+  await page.getByRole('menuitem', { name: 'Rename #meta' }).click();
   const input = page.getByPlaceholder('New tag name');
   await expect(input).toBeVisible();
   await input.fill('metal');
@@ -31,8 +31,8 @@ test('rename tag from sidebar updates list + filter', async ({ page }) => {
 });
 
 test('delete tag asks for confirm first', async ({ page }) => {
-  await page.getByTitle('Filter: tag:plan').hover();
-  await page.getByTitle('Delete #plan from all notes').click();
+  await page.getByRole('button', { name: 'Tag actions for #plan' }).click();
+  await page.getByRole('menuitem', { name: 'Delete #plan from all notes' }).click();
   await expect(page.getByRole('alertdialog')).toBeVisible();
   await page.getByRole('button', { name: 'Delete tag' }).click();
   await expect(page.getByTitle('Filter: tag:plan')).toHaveCount(0);

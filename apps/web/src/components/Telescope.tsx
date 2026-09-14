@@ -5,6 +5,7 @@ import { BUNDLED_THEMES, countDirectNotes, fuzzyFilter, notebookPath } from '@de
 import { extractToc } from '@devnote/editor';
 import { TELESCOPE_SCOPES as SCOPES, parseTelescopeQuery, scopePrefix, type TelescopeScope } from '../lib/telescope';
 import { tagCountsFor, useDevnote, workspaceScopeIdsFor } from '../lib/store';
+import { useFocusTrap } from '../lib/focusTrap';
 
 export interface TelescopeCommand {
   id: string;
@@ -76,6 +77,8 @@ export default function Telescope(props: Props) {
   const [index, setIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -166,7 +169,7 @@ export default function Telescope(props: Props) {
     else if (e.key === 'ArrowUp') { e.preventDefault(); setIndex((i) => Math.max(i - 1, 0)); }
     else if (e.key === 'Home') { e.preventDefault(); setIndex(0); }
     else if (e.key === 'End') { e.preventDefault(); setIndex(rows.length - 1); }
-    else if (e.key === 'Enter') {
+    else if (e.key === 'Enter' && e.target === inputRef.current) {
       e.preventDefault();
       const row = rows[index];
       if (row) runRow(row, e.metaKey || e.ctrlKey ? 'cmd' : e.shiftKey ? 'shift' : 'none');
@@ -197,6 +200,11 @@ export default function Telescope(props: Props) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: -4 }}
         transition={{ duration: 0.16, ease: 'easeOut' }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Telescope"
+        ref={panelRef}
+        onKeyDown={onKey}
         className="flex max-h-[60vh] w-[560px] max-w-[92vw] flex-col overflow-hidden rounded-lg bg-[var(--bg-raised)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -210,7 +218,6 @@ export default function Telescope(props: Props) {
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={onKey}
             placeholder={scopedMeta ? scopedMeta.placeholder : 'Type to search everything — > commands · b notebooks · t tags · # contents · h themes'}
             className="flex-1 bg-transparent px-1 py-1 text-sm outline-none"
           />

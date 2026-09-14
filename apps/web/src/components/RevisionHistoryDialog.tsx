@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CloseCircle, History } from 'reicon-react';
 import { revisionsForNote } from '@devnote/core';
 import type { Revision } from '@devnote/core';
 import { useDevnote } from '../lib/store';
+import { useFocusTrap } from '../lib/focusTrap';
 
 interface Props {
   noteId: string;
@@ -24,6 +25,8 @@ function ago(iso: string): string {
 export default function RevisionHistoryDialog(props: Props) {
   const list = revisionsForNote(props.revisions, props.noteId);
   const noteTitle = useDevnote((s) => s.notes.find((n) => n.id === props.noteId)?.title ?? '');
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef);
   const [selectedId, setSelectedId] = useState<string | null>(list[0]?.id ?? null);
 
   useEffect(() => {
@@ -45,6 +48,10 @@ export default function RevisionHistoryDialog(props: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={props.onClose}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Revision history"
+        ref={panelRef}
         className="flex h-[440px] w-[620px] max-w-[92vw] flex-col rounded-lg bg-[var(--bg-raised)] shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >

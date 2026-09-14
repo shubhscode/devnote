@@ -60,6 +60,8 @@ export default function PreviewView(props: Props) {
       btn.type = 'button';
       btn.className = 'copy-btn';
       btn.textContent = 'Copy';
+      btn.setAttribute('aria-label', 'Copy code block');
+      btn.setAttribute('title', 'Copy code block');
       btn.addEventListener('click', () => {
         const code = pre.querySelector('code');
         const text = code ? code.innerText : pre.innerText;

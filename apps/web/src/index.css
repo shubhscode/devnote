@@ -26,6 +26,7 @@ html.tauri #root {
   --accent: #0284c7;
   --accent-fg: #ffffff;
   --accent-soft: #f0f9ff;
+  --ring: #0284c7;
   --code-bg: #f6f8fa;
   --code-fg: #1f2328;
   --code-keyword: #cf222e;
@@ -48,6 +49,7 @@ html.tauri #root {
   --accent: #0284c7;
   --accent-fg: #ffffff;
   --accent-soft: #0c2940;
+  --ring: #38bdf8;
   --code-bg: #161b22;
   --code-fg: #e6edf3;
   --code-keyword: #ff7b72;
@@ -262,8 +264,20 @@ html.tauri #root {
   opacity: 0;
   transition: opacity 0.15s;
 }
-.markdown-body pre:hover .copy-btn {
+.markdown-body pre:hover .copy-btn,
+.markdown-body pre:focus-within .copy-btn,
+.copy-btn:focus-visible {
   opacity: 1;
+}
+.copy-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* Shared keyboard focus ring for icon buttons and menus. */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
 }
 .dark .copy-btn {
   border-color: #30363d;

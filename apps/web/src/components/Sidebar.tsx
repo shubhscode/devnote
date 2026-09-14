@@ -15,6 +15,7 @@ import {
 } from '../lib/store';
 import { STATUS_META } from './StatusPill';
 import TrafficLights from './TrafficLights';
+import RowMenu from './RowMenu';
 
 interface SidebarProps {
   onDeleteNotebook: (id: string) => void;
@@ -150,28 +151,15 @@ export default function Sidebar(props: SidebarProps) {
           <span className="flex-1 truncate">{tag}</span>
           <span className="text-[11px] opacity-60">{count}</span>
         </button>
-        <span className="hidden items-center pr-1 group-hover:flex">
-          <button
-            className="rounded p-0.5 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-            title={`Rename #${tag}`}
-            onClick={() => setTagEdit({ tag, mode: 'rename', draft: tag })}
-          >
-            <Edit size={13} />
-          </button>
-          <button
-            className="rounded p-0.5 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-            title={`Merge #${tag} into another tag…`}
-            onClick={() => setTagEdit({ tag, mode: 'merge', draft: '' })}
-          >
-            <ArrowCircleRight size={13} />
-          </button>
-          <button
-            className="rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900"
-            title={`Delete #${tag} from all notes`}
-            onClick={() => props.onDeleteTag(tag)}
-          >
-            <Trash size={13} />
-          </button>
+        <span className="flex items-center pr-1">
+          <RowMenu
+            label={`Tag actions for #${tag}`}
+            items={[
+              { title: `Rename #${tag}`, icon: <Edit size={13} />, onSelect: () => setTagEdit({ tag, mode: 'rename', draft: tag }) },
+              { title: `Merge #${tag} into another tag…`, icon: <ArrowCircleRight size={13} />, onSelect: () => setTagEdit({ tag, mode: 'merge', draft: '' }) },
+              { title: `Delete #${tag} from all notes`, icon: <Trash size={13} />, danger: true, onSelect: () => props.onDeleteTag(tag) },
+            ]}
+          />
         </span>
       </div>
     );
@@ -235,35 +223,18 @@ export default function Sidebar(props: SidebarProps) {
           <span className="rounded-full bg-zinc-100 px-1.5 text-[11px] opacity-70 dark:bg-zinc-800">
             {count}
           </span>
-          <span className="hidden items-center group-hover:flex">
-            <button
-              className="rounded p-0.5 hover:bg-zinc-200 disabled:opacity-30 dark:hover:bg-zinc-700"
-              title="Move up among siblings"
-              disabled={at <= 0}
-              onClick={() => reorderNotebook(notebook.id, -1)}
-            >
-              <ChevronUp size={13} />
-            </button>
-            <button
-              className="rounded p-0.5 hover:bg-zinc-200 disabled:opacity-30 dark:hover:bg-zinc-700"
-              title="Move down among siblings"
-              disabled={at < 0 || at >= siblings.length - 1}
-              onClick={() => reorderNotebook(notebook.id, 1)}
-            >
-              <ChevronDown size={13} />
-            </button>
-            <button className="rounded p-0.5 hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Open as workspace (Enter)" onClick={() => focusWorkspace(notebook.id)}>
-              <ArrowCircleRight size={13} />
-            </button>
-            <button className="rounded p-0.5 hover:bg-zinc-200 dark:hover:bg-zinc-700" title="New sub-notebook" onClick={() => add(notebook.id)}>
-              <Plus size={13} />
-            </button>
-            <button className="rounded p-0.5 hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Rename" onClick={() => startRename(notebook.id, notebook.name)}>
-              <Edit size={13} />
-            </button>
-            <button className="rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900" title="Delete" onClick={() => remove(notebook.id)}>
-              <Trash size={13} />
-            </button>
+          <span className="flex items-center">
+            <RowMenu
+              label={`Notebook actions for ${notebook.name}`}
+              items={[
+                { title: 'Move up among siblings', icon: <ChevronUp size={13} />, disabled: at <= 0, onSelect: () => reorderNotebook(notebook.id, -1) },
+                { title: 'Move down among siblings', icon: <ChevronDown size={13} />, disabled: at < 0 || at >= siblings.length - 1, onSelect: () => reorderNotebook(notebook.id, 1) },
+                { title: 'Open as workspace (Enter)', icon: <ArrowCircleRight size={13} />, onSelect: () => focusWorkspace(notebook.id) },
+                { title: 'New sub-notebook', icon: <Plus size={13} />, onSelect: () => add(notebook.id) },
+                { title: 'Rename', icon: <Edit size={13} />, onSelect: () => startRename(notebook.id, notebook.name) },
+                { title: 'Delete', icon: <Trash size={13} />, danger: true, onSelect: () => remove(notebook.id) },
+              ]}
+            />
           </span>
         </div>
         {isExpanded && node.children.map((c) => renderNode(c, depth + 1, node.children))}

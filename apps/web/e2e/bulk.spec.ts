@@ -52,8 +52,8 @@ test('notebook move-down reorders siblings', async ({ page }) => {
   const before = await nav.innerText();
   expect(before.indexOf('Inbox')).toBeLessThan(before.indexOf('Projects'));
 
-  await page.locator('nav').getByText('Inbox', { exact: true }).hover();
-  await page.getByTitle('Move down among siblings').first().click();
+  await page.getByRole('button', { name: 'Notebook actions for Inbox' }).click();
+  await page.getByRole('menuitem', { name: 'Move down among siblings' }).click();
 
   const after = await nav.innerText();
   expect(after.indexOf('Projects')).toBeLessThan(after.indexOf('Inbox'));
