@@ -41,10 +41,10 @@ Good Markdown notebooks for developers exist — but the polished ones charge ~$
 ## ✨ Features
 
 - **3-pane workspace** — Sidebar (notebooks / statuses / tags / trash) · note list + search · editor + preview
-- **Code-first GFM editor** — CodeMirror 6, syntax highlighting, copy-code buttons, `/` slash menu, selection bubble menu, table assist, edit / preview / side-by-side / distraction-free modes
+ - **Code-first GFM editor** — CodeMirror 6, syntax highlighting, copy-code buttons, `/` slash menu, selection bubble menu, table assist, edit / preview / side-by-side / distraction-free modes, word-count status bar, TOC outline, clickable preview checkboxes
 - **Instant offline search** — `book:`, `tag:`, `status:`, `title:`, `body:`, `"quoted phrases"`, `-exclusions` over 5k notes in ~1–3ms ([search reference](https://shubhscode.github.io/devnote/search.html))
 - **Telescope fuzzy finder** (`mod+K`) — `>` commands · `b` notebooks · `t` tags · `#` headings · `h` themes
-- **Organization** — nested notebooks (reorderable), tags, statuses, pin-to-top, workspace view, templates (`mod+T`), automatic revision history with undoable restore, multi-select bulk move/tag/status/pin/duplicate/export, note-list sort (updated/created/title)
+ - **Organization** — nested notebooks (reorderable), tags, statuses, pin-to-top, workspace view, templates (`mod+T`), automatic revision history with undoable restore, multi-select bulk move/tag/status/pin/duplicate/export, note-list sort (updated/created/title), single-note export (Markdown / styled HTML / Print-PDF)
 - **Optional git sync** — share `~/devnote` through a private repo; newer `updatedAt` wins, losers preserved as `.conflict-<device>.md`, never silent data loss ([setup](https://shubhscode.github.io/devnote/sync.html))
 - **7 themes** — Light / Dark / System + Nord, Dracula, Solarized, Catppuccin; code colors follow in editor and preview
 - **Private by default** — no account, no telemetry, zero required network calls. SQLite is an index; Markdown files are the truth
