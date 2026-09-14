@@ -37,3 +37,34 @@ test('delete tag asks for confirm first', async ({ page }) => {
   await page.getByRole('button', { name: 'Delete tag' }).click();
   await expect(page.getByTitle('Filter: tag:plan')).toHaveCount(0);
 });
+
+test('tag input suggests existing tags, keyboard-accepts, and offers create', async ({ page }) => {
+  // Welcome carries #meta, so #plan is the live suggestion.
+  const input = page.getByPlaceholder('+ tag');
+  await input.click();
+  await expect(page.getByRole('listbox', { name: 'Tag suggestions' })).toBeVisible();
+  await input.fill('pl');
+  await expect(page.getByRole('option', { name: '#plan 1' })).toBeVisible();
+  await input.press('ArrowDown');
+  await input.press('Enter');
+  await expect(page.getByText('#plan', { exact: true }).first()).toBeVisible();
+
+  // Unknown text offers an explicit create row (no silent datalist guess).
+  await input.fill('bravo');
+  await expect(page.getByRole('option', { name: 'Create #bravo' })).toBeVisible();
+  await input.press('Enter');
+  await expect(page.getByText('#bravo', { exact: true }).first()).toBeVisible();
+
+  // Persists across reload.
+  await page.reload();
+  await expect(page.getByText('#plan', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('#bravo', { exact: true }).first()).toBeVisible();
+});
+
+test('Escape closes the tag suggestions without adding', async ({ page }) => {
+  const input = page.getByPlaceholder('+ tag');
+  await input.click();
+  await expect(page.getByRole('listbox', { name: 'Tag suggestions' })).toBeVisible();
+  await input.press('Escape');
+  await expect(page.getByRole('listbox', { name: 'Tag suggestions' })).toHaveCount(0);
+});

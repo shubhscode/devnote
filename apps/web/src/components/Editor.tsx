@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   Archive, Copy, Edit as EditIcon, Eye, History,
   Layout, More, Pin, Plus, Trash, X,
@@ -91,6 +92,23 @@ export default function Editor(props: EditorProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const viewRef = props.viewRef;
+  /** Tag combobox state (hooks live here — above the null-note early return). */
+  const tagInputRef = useRef<HTMLInputElement>(null);
+  const [tagOpen, setTagOpen] = useState(false);
+  const [tagActive, setTagActive] = useState(-1);
+  const tagCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const n of notesForTags) {
+      if (n.trashed) continue;
+      for (const t of n.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    return counts;
+  }, [notesForTags]);
+  const tagQuery = tagInput.trim().toLowerCase();
+  const tagMatches = useMemo(
+    () => tagSuggestions.filter((t) => t.toLowerCase().includes(tagQuery)).slice(0, 8),
+    [tagSuggestions, tagQuery],
+  );
   /** Placeholder disambiguator for concurrent attachment uploads. */
   const attachSeq = useRef(0);
 
@@ -146,12 +164,54 @@ export default function Editor(props: EditorProps) {
 
   const addTag = () => {
     const t = tagInput.trim();
-    if (t === '' || note.tags.includes(t)) {
-      setTagInput('');
-      return;
-    }
-    commitPatch(note.id, { tags: [...note.tags, t] });
     setTagInput('');
+    setTagOpen(false);
+    setTagActive(-1);
+    if (t === '' || note.tags.includes(t)) return;
+    commitPatch(note.id, { tags: [...note.tags, t] });
+  };
+
+  type TagItem = { kind: 'tag'; name: string } | { kind: 'create'; name: string };
+  const tagTrimmed = tagInput.trim();
+  const tagExact =
+    tagTrimmed !== '' &&
+    (tagSuggestions.some((t) => t.toLowerCase() === tagQuery) ||
+      note.tags.some((t) => t.toLowerCase() === tagQuery));
+  const tagItems: TagItem[] = [
+    ...tagMatches.map((name): TagItem => ({ kind: 'tag', name })),
+    ...(tagTrimmed !== '' && !tagExact ? [{ kind: 'create' as const, name: tagTrimmed }] : []),
+  ];
+
+  const acceptTag = (item: TagItem) => {
+    setTagInput('');
+    setTagOpen(false);
+    setTagActive(-1);
+    if (!note.tags.includes(item.name)) {
+      commitPatch(note.id, { tags: [...note.tags, item.name] });
+    }
+    tagInputRef.current?.focus();
+  };
+
+  const onTagKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    const active = tagActive >= 0 && tagActive < tagItems.length ? tagItems[tagActive] : undefined;
+    if (e.key === 'ArrowDown' && tagOpen && tagItems.length > 0) {
+      e.preventDefault();
+      setTagActive((a) => (a + 1) % tagItems.length);
+    } else if (e.key === 'ArrowUp' && tagOpen && tagItems.length > 0) {
+      e.preventDefault();
+      setTagActive((a) => (a - 1 + tagItems.length) % tagItems.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (tagOpen && active !== undefined) acceptTag(active);
+      else addTag();
+    } else if (e.key === 'Tab' && tagOpen && active !== undefined) {
+      e.preventDefault();
+      acceptTag(active);
+    } else if (e.key === 'Escape' && tagOpen) {
+      e.preventDefault();
+      setTagOpen(false);
+      setTagActive(-1);
+    }
   };
 
   const jumpToPos = (pos: number) => {
@@ -399,21 +459,47 @@ export default function Editor(props: EditorProps) {
           </span>
         ))}
         {!note.trashed && (
-          <span className="flex items-center">
+          <span className="relative flex items-center">
             <input
+              ref={tagInputRef}
               value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
-              onBlur={addTag}
-              list="tag-suggestions"
+              onChange={(e) => { setTagInput(e.target.value); setTagOpen(true); setTagActive(-1); }}
+              onFocus={() => setTagOpen(true)}
+              onKeyDown={onTagKeyDown}
+              onBlur={() => { addTag(); }}
+              role="combobox"
+              aria-expanded={tagOpen && tagItems.length > 0}
+              aria-controls="tag-suggestions"
+              aria-activedescendant={tagActive >= 0 ? `tag-opt-${tagActive}` : undefined}
+              aria-autocomplete="list"
               placeholder={note.tags.length === 0 ? 'Add tags…' : '+ tag'}
               className="w-28 bg-transparent px-1 py-0.5 text-xs outline-none"
             />
-            <datalist id="tag-suggestions">
-              {tagSuggestions.map((t) => (
-                <option key={t} value={t} />
-              ))}
-            </datalist>
+            {tagOpen && tagItems.length > 0 && (
+              <ul
+                role="listbox"
+                id="tag-suggestions"
+                aria-label="Tag suggestions"
+                className="absolute left-0 top-full z-20 mt-1 min-w-44 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-1 shadow-lg"
+              >
+                {tagItems.map((item, i) => (
+                  <li key={`${item.kind}:${item.name}`} role="option" id={`tag-opt-${i}`} aria-selected={i === tagActive}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); acceptTag(item); }}
+                      className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs ${i === tagActive ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : ''}`}
+                    >
+                      <span className="flex-1 truncate">
+                        {item.kind === 'create' ? <>Create <span className="font-medium">#{item.name}</span></> : <>#{item.name}</>}
+                      </span>
+                      {item.kind === 'tag' && (
+                        <span className="opacity-50">{tagCounts.get(item.name) ?? 0}</span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </span>
         )}
       </div>
