@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BUILTIN_TEMPLATES,
-  STORAGE_KEYS,
   allTags,
   applyTemplate,
   buildNotebookTree,
@@ -15,10 +14,8 @@ import {
   descendantIds,
   duplicateAsCustom,
   duplicateNote,
-  generateId,
   isExclusionsOnly,
   isQuotaError,
-  isValidThemeId,
   markTemplateUsed,
   nowIso,
   parseSearch,
@@ -26,7 +23,6 @@ import {
   planExport,
   planImport,
   pushRevision,
-  quarantineKey,
   renameNotebook,
   renameTag as renameTagNotes,
   mergeTags as mergeTagNotes,
@@ -46,248 +42,34 @@ import {
   updateCustomTemplate,
   updateNote,
 } from '@devnote/core';
-import type { Note, Notebook, NoteSortKey, NoteStatus, Revision, StorageAdapter, Template, TreeNode } from '@devnote/core';
+import type { Note, Notebook, NoteStatus, Revision, StorageAdapter, Template, TreeNode } from '@devnote/core';
 import { localStorageAdapter } from './storage';
 import { classifySyncState, conflictedPaths, parsePorcelain, resolveConflict, syncCommitMessage } from '@devnote/sync';
 import type { SyncState } from '@devnote/sync';
+import {
+  RECENTS_KEY,
+  REVISIONS_KEY,
+  SETTINGS_KEY,
+  STORAGE_KEY,
+  TEMPLATES_KEY,
+  loadDB,
+  loadPersisted,
+  loadRecents,
+  loadRevisions,
+  loadSettings,
+  loadTemplates,
+} from './store/persist';
+import type { PersistedState } from './store/persist';
+import { computeVisible, filterBySelectionDirect } from './store/select';
+import type { SearchScope, Selection, Settings } from './store/types';
 
 export type { TreeNode };
-export type Selection =
-  | { kind: 'all' }
-  | { kind: 'notebook'; id: string }
-  | { kind: 'trash' };
+export type { PersistedState, SearchScope, Selection, Settings };
+export { computeVisible, loadPersisted };
+export { DEFAULT_SETTINGS } from './store/types';
+export type { ThemeId, ThemeMode } from './store/types';
 
-const STORAGE_KEY = STORAGE_KEYS.db;
-const TEMPLATES_KEY = STORAGE_KEYS.templates;
-const RECENTS_KEY = STORAGE_KEYS.recents;
-const REVISIONS_KEY = STORAGE_KEYS.revisions;
-const SETTINGS_KEY = STORAGE_KEYS.settings;
 const IDLE_SNAPSHOT_MS = 30_000;
-
-export type ThemeMode = 'light' | 'dark' | 'system';
-/** Any bundled (`light`, `dracula`, …) or plugin theme id. */
-export type ThemeId = string;
-
-export interface Settings {
-  /** Explicit default notebook; null = first root notebook. */
-  defaultNotebookId: string | null;
-  /** Theme id from the core registry (`light`/`dark`/`system` + community). */
-  theme: ThemeId;
-  wordWrap: boolean;
-  /** Editor font size, px (clamped 11–18). */
-  fontSize: number;
-  /** Note-list order (search results always rank by relevance). */
-  noteSort: NoteSortKey;
-}
-
-const DEFAULT_SETTINGS: Settings = {
-  defaultNotebookId: null,
-  theme: 'system',
-  wordWrap: true,
-  fontSize: 13.5,
-  noteSort: 'updated',
-};
-
-function readRaw(adapter: StorageAdapter, key: string): string | null {
-  try {
-    return adapter.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-/** A loaded slice plus whether its stored payload was corrupt (quarantined). */
-interface Loaded<T> {
-  value: T;
-  corrupted: boolean;
-}
-
-function loadSettings(adapter: StorageAdapter): Loaded<Settings> {
-  const fallback = { ...DEFAULT_SETTINGS };
-  const raw = readRaw(adapter, SETTINGS_KEY);
-  if (raw === null) {
-    // One-time migration from the Phase 0/1 theme flag.
-    try {
-      const legacy = adapter.getItem('devnote:theme');
-      if (legacy === 'light' || legacy === 'dark') return { value: { ...fallback, theme: legacy }, corrupted: false };
-    } catch { /* ignore */ }
-    return { value: fallback, corrupted: false };
-  }
-  try {
-    const p = JSON.parse(raw) as Partial<Settings>;
-    return {
-      value: {
-        defaultNotebookId: typeof p.defaultNotebookId === 'string' ? p.defaultNotebookId : null,
-        theme: typeof p.theme === 'string' && isValidThemeId(p.theme) ? p.theme : fallback.theme,
-        wordWrap: typeof p.wordWrap === 'boolean' ? p.wordWrap : fallback.wordWrap,
-        fontSize: typeof p.fontSize === 'number' ? Math.min(18, Math.max(11, p.fontSize)) : fallback.fontSize,
-        noteSort: p.noteSort === 'created' || p.noteSort === 'title' ? p.noteSort : 'updated',
-      },
-      corrupted: false,
-    };
-  } catch {
-    quarantineKey(adapter, SETTINGS_KEY);
-    return { value: fallback, corrupted: true };
-  }
-}
-
-function seedData(): { notebooks: Notebook[]; notes: Note[] } {
-  const t = nowIso();
-  const inbox: Notebook = {
-    id: generateId(), name: 'Inbox', parentId: null, sortOrder: 0, createdAt: t, updatedAt: t,
-  };
-  const projects: Notebook = {
-    id: generateId(), name: 'Projects', parentId: null, sortOrder: 1, createdAt: t, updatedAt: t,
-  };
-  const devnote: Notebook = {
-    id: generateId(), name: 'devnote', parentId: projects.id, sortOrder: 0, createdAt: t, updatedAt: t,
-  };
-  const notebooks = [inbox, projects, devnote];
-  const mk = (notebookId: string, title: string, body: string, tags: string[]): Note => ({
-    id: generateId(), title, body, notebookId, tags,
-    status: 'none', pinned: false, trashed: false, createdAt: t, updatedAt: t,
-  });
-  const notes = [
-    mk(inbox.id, 'Welcome to devnote',
-      '# Welcome\n\nLocal-first notes. No subscription.\n\n- [ ] Create a notebook\n- [ ] Write with `book:`, `tag:`, `status:` search',
-      ['meta']),
-    mk(devnote.id, 'Roadmap', 'See PLAN.md in the repo.\n\n> [!NOTE]\n> Phase 1a: CRUD + tree.', ['plan']),
-  ];
-  return { notebooks, notes };
-}
-
-function loadTemplates(adapter: StorageAdapter): Loaded<Template[]> {
-  const raw = readRaw(adapter, TEMPLATES_KEY);
-  if (raw === null) return { value: [], corrupted: false };
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) throw new Error('bad shape');
-    return {
-      value: parsed.filter(
-        (t): t is Template =>
-          typeof t === 'object' && t !== null &&
-          typeof (t as Template).id === 'string' &&
-          typeof (t as Template).name === 'string' &&
-          typeof (t as Template).body === 'string',
-      ),
-      corrupted: false,
-    };
-  } catch {
-    quarantineKey(adapter, TEMPLATES_KEY);
-    return { value: [], corrupted: true };
-  }
-}
-
-function loadRecents(adapter: StorageAdapter): Loaded<string[]> {
-  const raw = readRaw(adapter, RECENTS_KEY);
-  if (raw === null) return { value: [], corrupted: false };
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) throw new Error('bad shape');
-    return { value: parsed.filter((r): r is string => typeof r === 'string'), corrupted: false };
-  } catch {
-    quarantineKey(adapter, RECENTS_KEY);
-    return { value: [], corrupted: true };
-  }
-}
-
-function isRevision(v: unknown): v is Revision {
-  return (
-    typeof v === 'object' && v !== null &&
-    typeof (v as Revision).id === 'string' &&
-    typeof (v as Revision).noteId === 'string' &&
-    typeof (v as Revision).title === 'string' &&
-    typeof (v as Revision).body === 'string' &&
-    typeof (v as Revision).createdAt === 'string'
-  );
-}
-
-function loadRevisions(adapter: StorageAdapter): Loaded<Revision[]> {
-  const raw = readRaw(adapter, REVISIONS_KEY);
-  if (raw === null) return { value: [], corrupted: false };
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) throw new Error('bad shape');
-    return { value: parsed.filter(isRevision), corrupted: false };
-  } catch {
-    quarantineKey(adapter, REVISIONS_KEY);
-    return { value: [], corrupted: true };
-  }
-}
-function loadDB(adapter: StorageAdapter): Loaded<{ notebooks: Notebook[]; notes: Note[] }> {
-  const raw = readRaw(adapter, STORAGE_KEY);
-  if (raw === null) return { value: seedData(), corrupted: false };
-  try {
-    const parsed = JSON.parse(raw) as { notebooks?: Notebook[]; notes?: Note[] };
-    if (!Array.isArray(parsed.notebooks) || !Array.isArray(parsed.notes)) throw new Error('bad shape');
-    return { value: { notebooks: parsed.notebooks, notes: parsed.notes }, corrupted: false };
-  } catch {
-    // Corrupt payload quarantined to devnote:corrupt:* — never overwritten silently.
-    quarantineKey(adapter, STORAGE_KEY);
-    return { value: seedData(), corrupted: true };
-  }
-}
-
-/** Single parse of every persisted slice (Batch A: one load path for the future SQLite swap). */
-export function loadPersisted(adapter: StorageAdapter) {
-  const db = loadDB(adapter);
-  const templates = loadTemplates(adapter);
-  const recents = loadRecents(adapter);
-  const revisions = loadRevisions(adapter);
-  const settings = loadSettings(adapter);
-  const corruptedKeys: string[] = [];
-  if (db.corrupted) corruptedKeys.push(STORAGE_KEY);
-  if (templates.corrupted) corruptedKeys.push(TEMPLATES_KEY);
-  if (recents.corrupted) corruptedKeys.push(RECENTS_KEY);
-  if (revisions.corrupted) corruptedKeys.push(REVISIONS_KEY);
-  if (settings.corrupted) corruptedKeys.push(SETTINGS_KEY);
-  return {
-    notebooks: db.value.notebooks,
-    notes: db.value.notes,
-    customTemplates: templates.value,
-    templateRecents: recents.value,
-    revisions: revisions.value,
-    settings: settings.value,
-    corruptedKeys,
-  };
-}
-
-export type PersistedState = ReturnType<typeof loadPersisted>;
-
-export type SearchScope = 'local' | 'global';
-
-/** Direct filter (no ref dependency — used inside computeVisible). */
-function filterBySelectionDirect(
-  notes: Note[],
-  notebooks: Notebook[],
-  selection: Selection,
-  expanded: string[],
-): Note[] {
-  if (selection.kind === 'trash') {
-    return notes.filter((n) => n.trashed);
-  } else if (selection.kind === 'notebook') {
-    const ids = expanded.includes(selection.id)
-      ? [selection.id]
-      : [selection.id, ...descendantIds(notebooks, selection.id)];
-    return notes.filter((n) => !n.trashed && ids.includes(n.notebookId));
-  }
-  return notes.filter((n) => !n.trashed);
-}
-
-export function computeVisible(
-  notes: Note[],
-  notebooks: Notebook[],
-  selection: Selection,
-  expanded: string[],
-  rawQuery: string,
-  _scope: SearchScope = 'global',
-  sortKey: NoteSortKey = 'updated',
-): Note[] {
-  const base = filterBySelectionDirect(notes, notebooks, selection, expanded);
-  const q = rawQuery.trim();
-  if (q === '') return sortNotes(base, sortKey);
-  return searchNotes(base, notebooks, q).map((s) => s.note);
-}
 
 export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
   const [initial] = useState(() => loadPersisted(adapter));
