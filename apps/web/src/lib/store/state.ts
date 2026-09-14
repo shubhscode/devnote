@@ -84,6 +84,9 @@ export interface DevnoteState {
 
 export type DevnoteStoreApi = ReturnType<typeof createDevnoteStore>;
 
+/** Complete store shape (state + all action groups). */
+export type FullStoreState = DevnoteState & DataActions & NavActions & RevActions & LibraryActions & SyncActions;
+
 export interface NotePatch {
   title?: string;
   body?: string;
@@ -129,6 +132,8 @@ export interface NavActions {
   focusWorkspace: (id: string) => void;
   clearWorkspace: () => void;
   toggleWorkspace: () => void;
+  /** Set the search query, resetting to All Notes (or the workspace root) first. */
+  pickQuery: (q: string) => void;
 }
 
 /** Revision snapshot/restore actions. */
@@ -556,6 +561,18 @@ export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter
 
       clearWorkspace: () => {
         set({ workspaceId: null });
+      },
+
+      /** Set the search query, resetting to All Notes (or the workspace root) first. */
+      pickQuery: (q) => {
+        const { workspaceId, selection } = get();
+        if (workspaceId !== null) {
+          // Stay in the workspace: filter its notebook locally.
+          get().focusWorkspace(workspaceId);
+        } else if (selection.kind !== 'all') {
+          get().select({ kind: 'all' });
+        }
+        set({ query: q });
       },
 
       /** Toggle workspace for the selected notebook (else the active note's). */

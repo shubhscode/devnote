@@ -63,13 +63,33 @@ import {
 import type { PersistedState } from './store/persist';
 import { computeVisible, filterBySelectionDirect } from './store/select';
 import { editClock, externalWriteSeq, getDevnoteStore, setStoreState } from './store/state';
+import type { FullStoreState } from './store/state';
 import type { SearchScope, Selection, Settings } from './store/types';
 
 export type { TreeNode };
 export type { PersistedState, SearchScope, Selection, Settings };
 export { computeVisible, loadPersisted };
+export {
+  activeOrSelectedIds,
+  labelFor,
+  sidebarTreeFor,
+  statusCountsFor,
+  tagCountsFor,
+  workspaceScopeIdsFor,
+} from './store/select';
 export { DEFAULT_SETTINGS } from './store/types';
 export type { ThemeId, ThemeMode } from './store/types';
+export { getDevnoteStore };
+export type { FullStoreState } from './store/state';
+
+/**
+ * Bound store hook — panes subscribe per-slice so typing in the editor
+ * doesn't re-render the sidebar (and vice versa):
+ * `const notes = useDevnote((s) => s.notes)`.
+ */
+export function useDevnote<T>(selector: (s: FullStoreState) => T): T {
+  return getDevnoteStore()(selector);
+}
 
 export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
   const store = useMemo(() => getDevnoteStore(adapter), [adapter]);
