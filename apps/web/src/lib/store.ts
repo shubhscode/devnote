@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { SetStateAction } from 'react';
 import {
   BUILTIN_TEMPLATES,
   allTags,
@@ -61,6 +62,7 @@ import {
 } from './store/persist';
 import type { PersistedState } from './store/persist';
 import { computeVisible, filterBySelectionDirect } from './store/select';
+import { getDevnoteStore, setStoreState } from './store/state';
 import type { SearchScope, Selection, Settings } from './store/types';
 
 export type { TreeNode };
@@ -72,9 +74,13 @@ export type { ThemeId, ThemeMode } from './store/types';
 const IDLE_SNAPSHOT_MS = 30_000;
 
 export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
-  const [initial] = useState(() => loadPersisted(adapter));
-  const [notebooks, setNotebooks] = useState<Notebook[]>(initial.notebooks);
-  const [notes, setNotes] = useState<Note[]>(initial.notes);
+  const store = useMemo(() => getDevnoteStore(adapter), [adapter]);
+  const [initial] = useState(() => store.getState());
+  // Data slice lives in zustand (Track 1.1); the rest follows slice by slice.
+  const notebooks = store((s) => s.notebooks);
+  const notes = store((s) => s.notes);
+  const setNotebooks = useCallback((u: SetStateAction<Notebook[]>) => setStoreState(store, 'notebooks', u), [store]);
+  const setNotes = useCallback((u: SetStateAction<Note[]>) => setStoreState(store, 'notes', u), [store]);
   const [selection, setSelection] = useState<Selection>({ kind: 'all' });
   const [activeNoteId, setActiveNoteId] = useState<string | null>(initial.notes[0]?.id ?? null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
