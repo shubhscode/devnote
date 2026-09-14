@@ -512,41 +512,15 @@ export default function App() {
       {!focusMode && (
       <ErrorBoundary name="note list">
       <NoteList
-        notes={store.visibleNotes}
-        activeId={store.activeNoteId}
-        selectedIds={store.selectedIds}
-        query={store.query}
-        scope={store.scope}
-        label={label}
-        isTrash={store.selection.kind === 'trash'}
-        exclusionsOnly={store.exclusionsOnly}
-        sidebarOpen={sidebarOpen}
-        sortKey={store.settings.noteSort}
-        onSortChange={(k) => store.updateSettings({ noteSort: k })}
-        onQuery={store.setQuery}
-        onToggleScope={store.toggleScope}
-        onOpenTelescope={() => setTelescopeOpen(true)}
-        onOpen={store.openNote}
-        onRangeSelect={store.selectRange}
-        onSelectAll={() => store.setSelectedIds(store.visibleNotes.map((n) => n.id))}
-        onClearSelection={() => store.setSelectedIds([])}
-        onNew={store.newNote}
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
-        onTrashSelected={() => store.trash(activeOrSelected())}
-        onRestoreSelected={() => {
-          const ids = activeOrSelected();
+        onOpenTelescope={() => setTelescopeOpen(true)}
+        onRestoreSelected={(ids) => {
           if (ids.length > 0) setRestoreIds(ids);
         }}
-        onDeleteSelected={() => confirmDestroy(activeOrSelected())}
-        onMoveSelected={() => {
-          const ids = activeOrSelected();
+        onDeleteSelected={(ids) => confirmDestroy(ids)}
+        onMoveSelected={(ids) => {
           if (ids.length > 0) setMoveIds(ids);
         }}
-        onTagSelected={(t) => store.bulkTag(activeOrSelected(), t)}
-        onStatusSelected={(s) => store.bulkStatus(activeOrSelected(), s)}
-        onPinSelected={(p) => store.bulkPin(activeOrSelected(), p)}
-        onDuplicateSelected={() => store.duplicate(activeOrSelected())}
-        onExportSelected={() => store.exportNotes(activeOrSelected())}
       />
       </ErrorBoundary>
       )}

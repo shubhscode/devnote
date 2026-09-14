@@ -1,40 +1,16 @@
 import { useMemo, useState } from 'react';
 import { Archive, Command, Copy, Download, Filter, Global, Magnifier, Pin, Plus, Sidebar as SidebarIcon, Trash } from 'reicon-react';
-import { NOTE_STATUSES, bestSnippet, parseSearch, titleRanges, type NoteSortKey, type NoteStatus, type Range, type SearchTerm } from '@devnote/core';
+import { NOTE_STATUSES, bestSnippet, isExclusionsOnly, parseSearch, titleRanges, type NoteSortKey, type NoteStatus, type Range, type SearchTerm } from '@devnote/core';
 import type { Note } from '@devnote/core';
-import type { SearchScope } from '../lib/store';
+import { activeOrSelectedIds, computeVisible, labelFor, useDevnote } from '../lib/store';
 import { StatusPill, STATUS_META } from './StatusPill';
 
 interface NoteListProps {
-  notes: Note[];
-  activeId: string | null;
-  selectedIds: string[];
-  query: string;
-  scope: SearchScope;
-  label: string;
-  isTrash: boolean;
-  exclusionsOnly: boolean;
-  sidebarOpen: boolean;
-  sortKey: NoteSortKey;
-  onSortChange: (k: NoteSortKey) => void;
-  onQuery: (q: string) => void;
-  onToggleScope: () => void;
-  onOpenTelescope: () => void;
-  onOpen: (id: string, modClick: boolean) => void;
-  onRangeSelect: (id: string) => void;
-  onSelectAll: () => void;
-  onClearSelection: () => void;
-  onNew: () => void;
   onToggleSidebar: () => void;
-  onTrashSelected: () => void;
-  onRestoreSelected: () => void;
-  onDeleteSelected: () => void;
-  onMoveSelected: () => void;
-  onTagSelected: (tag: string) => void;
-  onStatusSelected: (s: NoteStatus) => void;
-  onPinSelected: (pinned: boolean) => void;
-  onDuplicateSelected: () => void;
-  onExportSelected: () => void;
+  onOpenTelescope: () => void;
+  onRestoreSelected: (ids: string[]) => void;
+  onDeleteSelected: (ids: string[]) => void;
+  onMoveSelected: (ids: string[]) => void;
 }
 
 /** Render cap — long lists stay fast; the count line shows the total. */
@@ -111,17 +87,51 @@ const NoteRow = ({
 const MemoizedNoteRow = NoteRow;
 
 export default function NoteList(props: NoteListProps) {
-  const multi = props.selectedIds.length > 1;
-  const terms = useMemo(() => parseSearch(props.query), [props.query]);
-  const shown = props.notes.slice(0, RENDER_CAP);
+  // Self-subscribed (Track 1.1): the 200-row list re-renders on typing, but
+  // the sidebar and preview don't — and vice versa.
+  const notes = useDevnote((s) => s.notes);
+  const notebooks = useDevnote((s) => s.notebooks);
+  const selection = useDevnote((s) => s.selection);
+  const expanded = useDevnote((s) => s.expanded);
+  const activeId = useDevnote((s) => s.activeNoteId);
+  const selectedIds = useDevnote((s) => s.selectedIds);
+  const query = useDevnote((s) => s.query);
+  const scope = useDevnote((s) => s.scope);
+  const sortKey = useDevnote((s) => s.settings.noteSort);
+  const patch = useDevnote((s) => s.patch);
+  const toggleScope = useDevnote((s) => s.toggleScope);
+  const setQuery = (q: string) => patch({ query: q });
+  const setSelectedIds = (ids: string[]) => patch({ selectedIds: ids });
+  const openNote = useDevnote((s) => s.openNote);
+  const selectRange = useDevnote((s) => s.selectRange);
+  const newNote = useDevnote((s) => s.newNote);
+  const trashNotes = useDevnote((s) => s.trash);
+  const bulkTag = useDevnote((s) => s.bulkTag);
+  const bulkStatus = useDevnote((s) => s.bulkStatus);
+  const bulkPin = useDevnote((s) => s.bulkPin);
+  const duplicateNotes = useDevnote((s) => s.duplicate);
+  const exportNotes = useDevnote((s) => s.exportNotes);
+  const updateSettings = useDevnote((s) => s.updateSettings);
+
+  const visible = useMemo(
+    () => computeVisible(notes, notebooks, selection, expanded, query, scope, sortKey),
+    [notes, notebooks, selection, expanded, query, scope, sortKey],
+  );
+  const label = useMemo(() => labelFor(selection, notebooks), [selection, notebooks]);
+  const isTrash = selection.kind === 'trash';
+  const exclusionsOnly = useMemo(() => query.trim() !== '' && isExclusionsOnly(parseSearch(query)), [query]);
+  const targets = activeOrSelectedIds(selectedIds, activeId);
+  const multi = selectedIds.length > 1;
+  const terms = useMemo(() => parseSearch(query), [query]);
+  const shown = visible.slice(0, RENDER_CAP);
   const [tagging, setTagging] = useState(false);
   const [tagDraft, setTagDraft] = useState('');
-  const allVisibleSelected = props.notes.length > 0 && props.notes.every((n) => props.selectedIds.includes(n.id));
-  const selectedNotes = props.notes.filter((n) => props.selectedIds.includes(n.id));
+  const allVisibleSelected = visible.length > 0 && visible.every((n) => selectedIds.includes(n.id));
+  const selectedNotes = visible.filter((n) => selectedIds.includes(n.id));
   const allPinned = selectedNotes.length > 0 && selectedNotes.every((n) => n.pinned);
 
   const commitTag = () => {
-    if (tagDraft.trim() !== '') props.onTagSelected(tagDraft.trim());
+    if (tagDraft.trim() !== '') bulkTag(targets, tagDraft.trim());
     setTagDraft('');
     setTagging(false);
   };
@@ -133,7 +143,7 @@ export default function NoteList(props: NoteListProps) {
         // Scoped select-all: never steals mod+A from the editor.
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
           e.preventDefault();
-          props.onSelectAll();
+          setSelectedIds(visible.map((n) => n.id));
         }
       }}
     >
@@ -146,45 +156,45 @@ export default function NoteList(props: NoteListProps) {
         </button>
         <button
           className="rounded p-1.5 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-800"
-          title={props.isTrash ? 'Scope fixed to Trash' : props.scope === 'global' ? 'Global search: all notebooks (click for notebook-only)' : 'Filtering current notebook (click for global search)'}
-          onClick={props.onToggleScope}
-          disabled={props.isTrash}
+          title={isTrash ? 'Scope fixed to Trash' : scope === 'global' ? 'Global search: all notebooks (click for notebook-only)' : 'Filtering current notebook (click for global search)'}
+          onClick={toggleScope}
+          disabled={isTrash}
         >
-          {props.scope === 'global' ? <Global size={16} /> : <Filter size={16} />}
+          {scope === 'global' ? <Global size={16} /> : <Filter size={16} />}
         </button>
         <div className="relative flex-1">
           <Magnifier size={14} className="absolute left-2 top-1/2 -translate-y-1/2 opacity-50" />
           <input
             id="note-search"
-            value={props.query}
-            onChange={(e) => props.onQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Escape') props.onQuery(''); }}
-            placeholder={props.scope === 'global' ? 'Search all notes…' : 'Filter notes…'}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setQuery(''); }}
+            placeholder={scope === 'global' ? 'Search all notes…' : 'Filter notes…'}
             title="Qualifiers: book: tag: status: title: body: ; &quot;quoted phrase&quot;; -exclusion (no partial-match stemming)"
             className="w-full rounded bg-[var(--bg-sunken)] py-1.5 pl-7 pr-2 text-sm outline-none"
           />
         </div>
-        <button className="rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="New note (mod+N)" onClick={props.onNew}>
+        <button className="rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="New note (mod+N)" onClick={newNote}>
           <Plus size={16} />
         </button>
       </div>
 
       <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-1.5 text-xs">
         <span className="min-w-0 flex-1 truncate opacity-60">
-          {props.label} · {props.notes.length} note{props.notes.length === 1 ? '' : 's'}
-          {props.scope === 'global' && !props.isTrash ? ' · global' : ''}
+          {label} · {visible.length} note{visible.length === 1 ? '' : 's'}
+          {scope === 'global' && !isTrash ? ' · global' : ''}
         </span>
         <button
           className="shrink-0 rounded px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           title={allVisibleSelected ? 'Clear selection' : 'Select all visible (mod+A)'}
-          onClick={allVisibleSelected ? props.onClearSelection : props.onSelectAll}
+          onClick={allVisibleSelected ? () => setSelectedIds([]) : () => setSelectedIds(visible.map((n) => n.id))}
         >
           {allVisibleSelected ? 'Clear' : 'Select all'}
         </button>
         <select
-          value={props.sortKey}
-          onChange={(e) => props.onSortChange(e.target.value as NoteSortKey)}
-          title={props.query.trim() === '' ? 'List order (search results always rank by relevance)' : 'List order (applies when search is clear)'}
+          value={sortKey}
+          onChange={(e) => updateSettings({ noteSort: e.target.value as NoteSortKey })}
+          title={query.trim() === '' ? 'List order (search results always rank by relevance)' : 'List order (applies when search is clear)'}
           className="shrink-0 rounded bg-transparent py-0.5 outline-none hover:bg-zinc-100 dark:hover:bg-zinc-800"
         >
           <option value="updated">Updated</option>
@@ -193,7 +203,7 @@ export default function NoteList(props: NoteListProps) {
         </select>
       </div>
 
-      {props.exclusionsOnly && (
+      {exclusionsOnly && (
         <div className="border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
           Exclusions need a search term — e.g. <code>notes -tag:old</code>
         </div>
@@ -201,19 +211,19 @@ export default function NoteList(props: NoteListProps) {
 
       {multi && (
         <div className="flex flex-wrap items-center gap-1 border-b border-[var(--border)] bg-[var(--bg-sunken)] px-3 py-1.5 text-sm">
-          <span className="mr-auto text-xs opacity-70">{props.selectedIds.length} selected</span>
-          {props.isTrash ? (
+          <span className="mr-auto text-xs opacity-70">{selectedIds.length} selected</span>
+          {isTrash ? (
             <>
-              <button className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" onClick={props.onRestoreSelected}>
+              <button className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" onClick={() => props.onRestoreSelected(targets)}>
                 <Archive size={13} /> Restore…
               </button>
-              <button className="flex items-center gap-1 rounded px-2 py-1 text-xs text-red-600 hover:bg-red-100 dark:hover:bg-red-900" onClick={props.onDeleteSelected}>
+              <button className="flex items-center gap-1 rounded px-2 py-1 text-xs text-red-600 hover:bg-red-100 dark:hover:bg-red-900" onClick={() => props.onDeleteSelected(targets)}>
                 <Trash size={13} /> Delete
               </button>
             </>
           ) : (
             <>
-              <button className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Move to notebook…" onClick={props.onMoveSelected}>
+              <button className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Move to notebook…" onClick={() => props.onMoveSelected(targets)}>
                 <Archive size={13} /> Move…
               </button>
               {tagging ? (
@@ -238,7 +248,7 @@ export default function NoteList(props: NoteListProps) {
               )}
               <select
                 value=""
-                onChange={(e) => { if (e.target.value !== '') props.onStatusSelected(e.target.value as NoteStatus); }}
+                onChange={(e) => { if (e.target.value !== '') bulkStatus(targets, e.target.value as NoteStatus); }}
                 title="Set status for selected"
                 className="max-w-24 rounded bg-transparent px-1 py-1 text-xs outline-none hover:bg-zinc-200 dark:hover:bg-zinc-700"
               >
@@ -251,17 +261,17 @@ export default function NoteList(props: NoteListProps) {
               <button
                 className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700"
                 title={allPinned ? 'Unpin selected' : 'Pin selected to top'}
-                onClick={() => props.onPinSelected(!allPinned)}
+                onClick={() => bulkPin(targets, !allPinned)}
               >
                 <Pin size={13} weight={allPinned ? 'Filled' : 'Outline'} /> {allPinned ? 'Unpin' : 'Pin'}
               </button>
-              <button className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Duplicate selected" onClick={props.onDuplicateSelected}>
+              <button className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Duplicate selected" onClick={() => duplicateNotes(targets)}>
                 <Copy size={13} />
               </button>
-              <button className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Export selected as Markdown files" onClick={props.onExportSelected}>
+              <button className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Export selected as Markdown files" onClick={() => exportNotes(targets)}>
                 <Download size={13} />
               </button>
-              <button className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" onClick={props.onTrashSelected}>
+              <button className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" onClick={() => trashNotes(targets)}>
                 <Trash size={13} /> Trash
               </button>
             </>
@@ -270,14 +280,14 @@ export default function NoteList(props: NoteListProps) {
       )}
 
       <div className="flex-1 overflow-y-auto">
-        {props.notes.length === 0 && !props.exclusionsOnly && (
+        {visible.length === 0 && !exclusionsOnly && (
           <div className="px-4 py-8 text-center text-sm opacity-50">
             No notes here yet.<br />Press <kbd className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">mod+N</kbd> to create one.
           </div>
         )}
         {shown.map((n) => {
-          const isActive = n.id === props.activeId;
-          const isChecked = props.selectedIds.includes(n.id);
+          const isActive = n.id === activeId;
+          const isChecked = selectedIds.includes(n.id);
           return (
             <MemoizedNoteRow
               key={n.id}
@@ -285,14 +295,14 @@ export default function NoteList(props: NoteListProps) {
               isActive={isActive}
               isChecked={isChecked}
               terms={terms}
-              onOpen={props.onOpen}
-              onRangeSelect={props.onRangeSelect}
+              onOpen={openNote}
+              onRangeSelect={selectRange}
             />
           );
         })}
-        {props.notes.length > RENDER_CAP && (
+        {visible.length > RENDER_CAP && (
           <div className="px-4 py-2 text-center text-xs opacity-50">
-            Showing first {RENDER_CAP} of {props.notes.length} — refine your search
+            Showing first {RENDER_CAP} of {visible.length} — refine your search
           </div>
         )}
       </div>

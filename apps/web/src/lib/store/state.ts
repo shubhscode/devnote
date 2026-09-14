@@ -85,7 +85,12 @@ export interface DevnoteState {
 export type DevnoteStoreApi = ReturnType<typeof createDevnoteStore>;
 
 /** Complete store shape (state + all action groups). */
-export type FullStoreState = DevnoteState & DataActions & NavActions & RevActions & LibraryActions & SyncActions;
+export type FullStoreState = DevnoteState & DataActions & NavActions & RevActions & LibraryActions & SyncActions & PatchAction;
+
+/** Escape hatch for plain value sets (search box, selection lists, notices). */
+export interface PatchAction {
+  patch: (p: Partial<DevnoteState>) => void;
+}
 
 export interface NotePatch {
   title?: string;
@@ -189,7 +194,7 @@ function defaultNotebookIdFor(notebooks: Notebook[], settings: Settings): string
 
 export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
   const initial = loadPersisted(adapter);
-  return create<DevnoteState & DataActions & NavActions & RevActions & LibraryActions & SyncActions>()((set, get) => {
+  return create<DevnoteState & DataActions & NavActions & RevActions & LibraryActions & SyncActions & PatchAction>()((set, get) => {
     const fail = (e: unknown) => {
       set({ notice: e instanceof Error ? e.message : 'Something went wrong' });
     };
@@ -451,6 +456,10 @@ export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter
 
       toggleScope: () => {
         set((s) => ({ scope: s.scope === 'local' ? 'global' : 'local' }));
+      },
+
+      patch: (p) => {
+        set(p);
       },
 
       snapshotNote,
