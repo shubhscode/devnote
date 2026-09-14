@@ -7,7 +7,8 @@ type AttrList = Exclude<Schema['attributes'], undefined>[string];
 
 const EXTRA_ATTRS: Record<string, string[]> = {
   '*': ['className'],
-  a: ['className'],
+  // Wikilinks (2.2): no href — clicks are handled in-app, never navigation.
+  a: ['className', 'dataWikilink', 'dataBroken'],
   h1: ['className', 'id', 'dataHeadingIndex'],
   h2: ['className', 'id', 'dataHeadingIndex'],
   h3: ['className', 'id', 'dataHeadingIndex'],

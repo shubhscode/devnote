@@ -47,6 +47,29 @@ describe('setTaskChecked', () => {
   });
 });
 
+describe('wikilink rendering (2.2)', () => {
+  const targets = new Set(['roadmap', 'plan b']);
+
+  it('links known targets, flags broken ones, honors aliases', () => {
+    const html = renderMarkdown('See [[Roadmap]] and [[Missing]] plus [[Plan B|the plan]]', { linkTargets: targets });
+    expect(html).toContain('data-wikilink="Roadmap"');
+    expect(html).toContain('>Roadmap</a>');
+    expect(html).toContain('data-wikilink="Missing"');
+    expect(html).toContain('data-broken="true"');
+    expect(html).toContain('>the plan</a>');
+    expect(html).not.toContain('href');
+  });
+
+  it('skips code spans and fences', () => {
+    const html = renderMarkdown('`[[Roadmap]]`\n\n```\n[[Roadmap]]\n```', { linkTargets: targets });
+    expect(html).not.toContain('data-wikilink');
+  });
+
+  it('renders no anchors without targets', () => {
+    expect(renderMarkdown('See [[Roadmap]]')).not.toContain('data-wikilink');
+  });
+});
+
 describe('heading anchors (2.3)', () => {
   it('adds slug ids to headings (user-content- prefix, GitHub-style)', () => {
     const html = renderMarkdown('# Hello World\n\n## Hello World');

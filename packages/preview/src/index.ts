@@ -14,30 +14,55 @@ import rehypeStringify from 'rehype-stringify';
 import { previewSchema } from './schema';
 import { colorSwatch, indexHeadings, isColorCode, stripFrontmatter } from './plugins';
 import { indexTaskCheckboxes } from './tasks';
+import { renderWikilinks } from './links';
 
 export { isColorCode, previewSchema };
 export { indexHeadings } from './plugins';
 export { countTasks, indexTaskCheckboxes, setTaskChecked } from './tasks';
+export { renderWikilinks, splitWikilinkText } from './links';
 export { exportHtmlDoc } from './export';
 export type { ExportTheme } from './export';
 
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkFrontmatter, ['yaml', 'toml'])
-  .use(stripFrontmatter)
-  .use(remarkGfm)
-  .use(remarkAlert)
-  .use(remarkRehype, { allowDangerousHtml: true })
-  .use(rehypeRaw)
-  .use(indexTaskCheckboxes)
-  .use(indexHeadings)
-  .use(colorSwatch)
-  .use(rehypeHighlight, { detect: true })
-  .use(rehypeSlug)
-  .use(rehypeSanitize, previewSchema)
-  .use(rehypeStringify);
+/**
+ * Pipeline factory. `linkTargets` varies per render (note titles change),
+ * so a linking processor is built per call — plugin registration is
+ * trivial next to parse cost. The shared plain processor covers the rest.
+ */
+function buildProcessor(linkTargets?: Set<string>) {
+  const p = unified()
+    .use(remarkParse)
+    .use(remarkFrontmatter, ['yaml', 'toml'])
+    .use(stripFrontmatter)
+    .use(remarkGfm)
+    .use(remarkAlert)
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw);
+  // Before sanitize: added anchors carry only allowlisted attrs.
+  // NB: wrap the transformer — passing it directly would run it as an
+  // attacher (tree = processor options → crash).
+  if (linkTargets !== undefined) {
+    const targets = linkTargets;
+    p.use(() => renderWikilinks(targets));
+  }
+  p.use(indexTaskCheckboxes)
+    .use(indexHeadings)
+    .use(colorSwatch)
+    .use(rehypeHighlight, { detect: true })
+    .use(rehypeSlug)
+    .use(rehypeSanitize, previewSchema)
+    .use(rehypeStringify);
+  return p;
+}
+
+const plainProcessor = buildProcessor();
+
+export interface RenderOptions {
+  /** Lowercased existing note titles — unknown targets render broken. */
+  linkTargets?: Set<string>;
+}
 
 /** Render Markdown to sanitized HTML. Synchronous; safe to inject. */
-export function renderMarkdown(markdown: string): string {
-  return String(processor.processSync(markdown));
+export function renderMarkdown(markdown: string, opts?: RenderOptions): string {
+  if (opts?.linkTargets === undefined) return String(plainProcessor.processSync(markdown));
+  return String(buildProcessor(opts.linkTargets).processSync(markdown));
 }

@@ -9,6 +9,7 @@ export * from './revisions';
 export * from './fuzzy';
 export * from './mirror';
 export * from './wordstats';
+export * from './links';
 export * from './themes';
 export * from './storage';
 export * from './tags';
