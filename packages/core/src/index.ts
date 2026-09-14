@@ -9,6 +9,8 @@ export * from './revisions';
 export * from './fuzzy';
 export * from './mirror';
 export * from './themes';
+export * from './storage';
+export * from './tags';
 
 /** Minimal search-query stub (full FTS grammar in Phase 1c per PLAN.md §3). */
 export interface SearchQuery {

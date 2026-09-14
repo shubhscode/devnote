@@ -7,12 +7,18 @@ function notebookExists(notebooks: Notebook[], id: string): boolean {
 }
 
 function normalizeTags(tags: string[]): string[] {
+  // Trim + dedupe case-insensitively (`JS` = `js`), first-seen casing wins.
   const seen = new Set<string>();
+  const out: string[] = [];
   for (const t of tags) {
     const trimmed = t.trim();
-    if (trimmed !== '' && !seen.has(trimmed)) seen.add(trimmed);
+    const key = trimmed.toLowerCase();
+    if (trimmed !== '' && !seen.has(key)) {
+      seen.add(key);
+      out.push(trimmed);
+    }
   }
-  return [...seen];
+  return out;
 }
 
 export function createNote(
@@ -135,20 +141,81 @@ export function deleteNotesPermanently(notes: Note[], ids: string[]): Note[] {
   return notes.filter((n) => !set.has(n.id));
 }
 
-/** Unique sorted tag list across non-trashed notes (for autocomplete). */
+/** Unique sorted tag list across non-trashed notes (for autocomplete). Case-folded, first-seen casing wins. */
 export function allTags(notes: Note[]): string[] {
-  const set = new Set<string>();
+  const seen = new Map<string, string>();
   for (const n of notes) {
     if (n.trashed) continue;
-    for (const t of n.tags) set.add(t);
+    for (const t of n.tags) {
+      const key = t.trim().toLowerCase();
+      if (key !== '' && !seen.has(key)) seen.set(key, t);
+    }
   }
-  return [...set].sort((a, b) => a.localeCompare(b));
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
-/** Sort: pinned first, then updatedAt desc. */
-export function sortNotes(notes: Note[]): Note[] {
+/** Note-list sort orders. Pinned notes stay first in every order. */
+export type NoteSortKey = 'updated' | 'created' | 'title';
+
+/** Sort: pinned first, then the key (updated/created desc, title A–Z), ties by updatedAt desc. */
+export function sortNotes(notes: Note[], key: NoteSortKey = 'updated'): Note[] {
   return [...notes].sort((a, b) => {
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    if (key === 'title') {
+      const t = a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+      if (t !== 0) return t;
+    } else if (key === 'created') {
+      const c = b.createdAt.localeCompare(a.createdAt);
+      if (c !== 0) return c;
+    } else {
+      const u = b.updatedAt.localeCompare(a.updatedAt);
+      if (u !== 0) return u;
+    }
     return b.updatedAt.localeCompare(a.updatedAt);
   });
+}
+
+/** Move notes to another notebook (trashed state kept). Throws on unknown notebook. */
+export function moveNotes(
+  notes: Note[],
+  notebooks: Notebook[],
+  ids: string[],
+  notebookId: string,
+): Note[] {
+  if (!notebooks.some((n) => n.id === notebookId)) {
+    throw new Error(`notebook not found: ${notebookId}`);
+  }
+  const set = new Set(ids);
+  return notes.map((n) =>
+    set.has(n.id) ? { ...n, notebookId, updatedAt: nowIso() } : n,
+  );
+}
+
+/** Add a tag to notes (normalized: trimmed, case-deduped). Throws on blank tag. */
+export function tagNotes(notes: Note[], ids: string[], tag: string): Note[] {
+  const clean = tag.trim();
+  if (clean === '') throw new Error('invalid tag: tag name must not be blank');
+  const key = clean.toLowerCase();
+  const set = new Set(ids);
+  return notes.map((n) => {
+    if (!set.has(n.id) || n.tags.some((t) => t.toLowerCase() === key)) return n;
+    return { ...n, tags: [...n.tags, clean], updatedAt: nowIso() };
+  });
+}
+
+/** Set status for notes. Throws on invalid status. */
+export function setNotesStatus(notes: Note[], ids: string[], status: NoteStatus): Note[] {
+  if (!NOTE_STATUSES.includes(status)) throw new Error(`invalid status: ${status}`);
+  const set = new Set(ids);
+  return notes.map((n) =>
+    set.has(n.id) ? { ...n, status, updatedAt: nowIso() } : n,
+  );
+}
+
+/** Pin/unpin notes. */
+export function setNotesPinned(notes: Note[], ids: string[], pinned: boolean): Note[] {
+  const set = new Set(ids);
+  return notes.map((n) =>
+    set.has(n.id) ? { ...n, pinned, updatedAt: nowIso() } : n,
+  );
 }

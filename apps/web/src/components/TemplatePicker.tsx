@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { CloseCircle, Copy, Edit, Plus, Trash } from 'reicon-react';
 import { parseTemplateBody, renderTemplateText, stripInstructionBlocks } from '@devnote/core';
 import type { Template } from '@devnote/core';
+import ConfirmDialog from './ConfirmDialog';
 
 // Preview stack is already code-split — reuse it here.
 const PreviewView = lazy(() => import('./PreviewView'));
@@ -33,6 +34,7 @@ export default function TemplatePicker(props: Props) {
     return recent ?? props.templates[0]?.id ?? null;
   });
   const [editing, setEditing] = useState<EditDraft | null>(null);
+  const [pendingDelete, setPendingDelete] = useState(false);
   const filterRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -110,11 +112,15 @@ export default function TemplatePicker(props: Props) {
 
   const remove = () => {
     if (!selected || selected.builtin) return;
-    // TODO(Phase 2.5): custom confirm dialog instead of window.confirm.
-    if (window.confirm(`Delete template "${selected.name}"?`)) {
+    setPendingDelete(true);
+  };
+
+  const confirmRemove = () => {
+    if (selected && !selected.builtin) {
       props.onDelete(selected.id);
       setSelectedId(null);
     }
+    setPendingDelete(false);
   };
 
   const previewOf = (t: Template): { description?: string; markdown: string; meta: string } => {
@@ -148,6 +154,16 @@ export default function TemplatePicker(props: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={props.onClose}>
+      {pendingDelete && selected !== null && (
+        <ConfirmDialog
+          title="Delete template?"
+          message={`Delete template "${selected.name}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={confirmRemove}
+          onClose={() => setPendingDelete(false)}
+        />
+      )}
       <div
         className="flex h-[480px] w-[680px] max-w-[92vw] flex-col rounded-lg bg-[var(--bg-raised)] shadow-xl"
         onClick={(e) => e.stopPropagation()}

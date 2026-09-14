@@ -14,6 +14,7 @@ import { isTauri } from './lib/mirror';
 import Sidebar from './components/Sidebar';
 import NoteList from './components/NoteList';
 import Editor, { type ViewMode } from './components/Editor';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import MoveToNotebookDialog from './components/MoveToNotebookDialog';
 import ConfirmDialog from './components/ConfirmDialog';
 import PreferencesDialog from './components/PreferencesDialog';
@@ -33,8 +34,10 @@ export default function App() {
     return saved === 'preview' || saved === 'split' ? saved : 'edit';
   });
   const [restoreIds, setRestoreIds] = useState<string[] | null>(null);
+  const [moveIds, setMoveIds] = useState<string[] | null>(null);
   const [destroyIds, setDestroyIds] = useState<string[] | null>(null);
   const [notebookDelete, setNotebookDelete] = useState<{ id: string; name: string } | null>(null);
+  const [tagDelete, setTagDelete] = useState<string | null>(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [historyNoteId, setHistoryNoteId] = useState<string | null>(null);
   const [update, setUpdate] = useState<ReleaseInfo | null>(null);
@@ -105,12 +108,33 @@ export default function App() {
   const ref = useRef(store);
   ref.current = store;
   // Fresh modal flags for the mount-once key handler below.
-  const uiRef = useRef({ templatePickerOpen, telescopeOpen, historyNoteId, prefsOpen, restoreIds, destroyIds, notebookDelete, updateOpen: update !== null });
-  uiRef.current = { templatePickerOpen, telescopeOpen, historyNoteId, prefsOpen, restoreIds, destroyIds, notebookDelete, updateOpen: update !== null };
+  const uiRef = useRef({ templatePickerOpen, telescopeOpen, historyNoteId, prefsOpen, restoreIds, moveIds, destroyIds, notebookDelete, tagDelete, updateOpen: update !== null });
+  uiRef.current = { templatePickerOpen, telescopeOpen, historyNoteId, prefsOpen, restoreIds, moveIds, destroyIds, notebookDelete, tagDelete, updateOpen: update !== null };
   // Idle revision snapshots (30s quiet) — cheap dirty-check inside.
   useEffect(() => {
     const t = setInterval(() => ref.current.snapshotIdle(), 10_000);
     return () => clearInterval(t);
+  }, []);
+  // Global error hooks: surface async failures as toasts instead of silent loss.
+  useEffect(() => {
+    const report = (message: string) => {
+      try {
+        localStorage.setItem('devnote:last-error', `${new Date().toISOString()} ${message.slice(0, 500)}`);
+      } catch { /* ignore */ }
+      ref.current.setNotice(`Error: ${message.slice(0, 160)}`);
+    };
+    const onError = (e: ErrorEvent) => {
+      if (e.message) report(e.message);
+    };
+    const onRejection = (e: PromiseRejectionEvent) => {
+      report(e.reason instanceof Error ? e.reason.message : String(e.reason));
+    };
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+    };
   }, []);
   // Update-available notice: GitHub Releases check, max once/day, silent offline.
   useEffect(() => {
@@ -408,14 +432,19 @@ export default function App() {
   }, [workspaceNotes]);
 
   const tagCounts = useMemo(() => {
-    const map = new Map<string, number>();
+    // Case-folded (`JS` = `js`), first-seen casing wins — matches core allTags.
+    const map = new Map<string, { tag: string; count: number }>();
     for (const n of workspaceNotes) {
       if (n.trashed) continue;
-      for (const t of n.tags) map.set(t, (map.get(t) ?? 0) + 1);
+      for (const t of n.tags) {
+        const key = t.trim().toLowerCase();
+        if (key === '') continue;
+        const entry = map.get(key);
+        if (entry) entry.count += 1;
+        else map.set(key, { tag: t, count: 1 });
+      }
     }
-    return [...map.entries()]
-      .map(([tag, count]) => ({ tag, count }))
-      .sort((a, b) => a.tag.localeCompare(b.tag));
+    return [...map.values()].sort((a, b) => a.tag.localeCompare(b.tag));
   }, [workspaceNotes]);
 
   const label =
@@ -468,6 +497,7 @@ export default function App() {
       )}
       <div className={`flex min-h-0 flex-1 ${inTauri ? '' : ''}`}>
       {sidebarOpen && !focusMode && (
+        <ErrorBoundary name="sidebar">
         <Sidebar
           tree={sidebarTree}
           notebooks={store.notebooks}
@@ -475,6 +505,7 @@ export default function App() {
           trashedCount={store.trashedCount}
           statusCounts={statusCounts}
           tagCounts={tagCounts}
+          allTags={tagCounts.map((t) => t.tag)}
           selection={store.selection}
           expanded={store.expanded}
           workspacePath={workspacePath}
@@ -486,6 +517,10 @@ export default function App() {
             const nb = store.notebooks.find((n) => n.id === id);
             if (nb) setNotebookDelete({ id: nb.id, name: nb.name });
           }}
+          onRenameTag={store.renameTag}
+          onMergeTags={store.mergeTags}
+          onDeleteTag={(name) => setTagDelete(name)}
+          onReorderNotebook={store.reorderNotebook}
           onPickQuery={pickQuery}
           onOpenPreferences={() => setPrefsOpen(true)}
           onFocusNotebook={store.focusWorkspace}
@@ -494,9 +529,11 @@ export default function App() {
           syncBusy={store.syncBusy}
           onSyncNow={store.syncNow}
         />
+        </ErrorBoundary>
       )}
 
       {!focusMode && (
+      <ErrorBoundary name="note list">
       <NoteList
         notes={store.visibleNotes}
         activeId={store.activeNoteId}
@@ -507,10 +544,15 @@ export default function App() {
         isTrash={store.selection.kind === 'trash'}
         exclusionsOnly={store.exclusionsOnly}
         sidebarOpen={sidebarOpen}
+        sortKey={store.settings.noteSort}
+        onSortChange={(k) => store.updateSettings({ noteSort: k })}
         onQuery={store.setQuery}
         onToggleScope={store.toggleScope}
         onOpenTelescope={() => setTelescopeOpen(true)}
         onOpen={store.openNote}
+        onRangeSelect={store.selectRange}
+        onSelectAll={() => store.setSelectedIds(store.visibleNotes.map((n) => n.id))}
+        onClearSelection={() => store.setSelectedIds([])}
         onNew={store.newNote}
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
         onTrashSelected={() => store.trash(activeOrSelected())}
@@ -519,9 +561,20 @@ export default function App() {
           if (ids.length > 0) setRestoreIds(ids);
         }}
         onDeleteSelected={() => confirmDestroy(activeOrSelected())}
+        onMoveSelected={() => {
+          const ids = activeOrSelected();
+          if (ids.length > 0) setMoveIds(ids);
+        }}
+        onTagSelected={(t) => store.bulkTag(activeOrSelected(), t)}
+        onStatusSelected={(s) => store.bulkStatus(activeOrSelected(), s)}
+        onPinSelected={(p) => store.bulkPin(activeOrSelected(), p)}
+        onDuplicateSelected={() => store.duplicate(activeOrSelected())}
+        onExportSelected={() => store.exportNotes(activeOrSelected())}
       />
+      </ErrorBoundary>
       )}
 
+      <ErrorBoundary name="editor">
       <Editor
         note={store.activeNote}
         notebooks={store.notebooks}
@@ -542,6 +595,7 @@ export default function App() {
         onRestore={(id) => setRestoreIds([id])}
         onDeleteForever={(id) => confirmDestroy([id])}
       />
+      </ErrorBoundary>
 
       {restoreIds !== null && (
         <MoveToNotebookDialog
@@ -549,6 +603,15 @@ export default function App() {
           count={restoreIds.length}
           onClose={() => setRestoreIds(null)}
           onMove={moveRestore}
+        />
+      )}
+
+      {moveIds !== null && (
+        <MoveToNotebookDialog
+          notebooks={store.notebooks}
+          count={moveIds.length}
+          onClose={() => setMoveIds(null)}
+          onMove={(target) => { store.moveNotesTo(moveIds, target); setMoveIds(null); }}
         />
       )}
 
@@ -571,6 +634,17 @@ export default function App() {
           danger
           onConfirm={() => { store.removeNotebook(notebookDelete.id); setNotebookDelete(null); }}
           onClose={() => setNotebookDelete(null)}
+        />
+      )}
+
+      {tagDelete !== null && (
+        <ConfirmDialog
+          title={`Delete tag #${tagDelete}?`}
+          message={`Remove #${tagDelete} from all notes? Notes stay; the tag vanishes everywhere.`}
+          confirmLabel="Delete tag"
+          danger
+          onConfirm={() => { store.deleteTag(tagDelete); setTagDelete(null); }}
+          onClose={() => setTagDelete(null)}
         />
       )}
 

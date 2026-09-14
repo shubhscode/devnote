@@ -132,6 +132,33 @@ export function moveNotebook(
 }
 
 /**
+ * Move a notebook one step among its siblings (same parentId).
+ * Swaps sortOrder with the neighbour; ties fall back to name order (same as the tree).
+ * Throws when the notebook is already first/last in that direction.
+ */
+export function reorderNotebook(
+  notebooks: Notebook[],
+  id: string,
+  dir: -1 | 1,
+): Notebook[] {
+  const node = notebooks.find((n) => n.id === id);
+  if (!node) throw new Error(`notebook not found: ${id}`);
+  const siblings = notebooks
+    .filter((n) => n.parentId === node.parentId)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  const at = siblings.findIndex((n) => n.id === id);
+  const other = siblings[at + dir];
+  if (other === undefined) {
+    throw new Error(dir === -1 ? 'notebook is already first' : 'notebook is already last');
+  }
+  const now = nowIso();
+  return notebooks.map((n) => {
+    if (n.id === id) return { ...n, sortOrder: other.sortOrder, updatedAt: now };
+    if (n.id === other.id) return { ...n, sortOrder: node.sortOrder, updatedAt: now };
+    return n;
+  });
+}
+/**
  * Delete a notebook. Only allowed when it has no sub-notebooks and no
  * non-trashed notes — caller must trash/move contents first (no silent data loss).
  */

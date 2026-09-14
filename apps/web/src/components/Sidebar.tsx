@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import {
-  AddCircle, ArrowCircleRight, ChevronDown, ChevronRight,
+  AddCircle, ArrowCircleRight, ChevronDown, ChevronRight, ChevronUp,
   Edit, Hashtag, Layers, Notebook as NotebookIcon, Plus, Refresh, Settings, Trash, X,
 } from 'reicon-react';
 import { notebookPath } from '@devnote/core';
@@ -17,6 +17,11 @@ interface SidebarProps {
   trashedCount: number;
   statusCounts: Record<NoteStatus, number>;
   tagCounts: { tag: string; count: number }[];
+  /** All tag names (for merge-target suggestions). */
+  allTags: string[];
+  onRenameTag: (oldName: string, newName: string) => void;
+  onMergeTags: (from: string[], into: string) => void;
+  onDeleteTag: (name: string) => void;
   selection: Selection;
   expanded: string[];
   onSelect: (s: Selection) => void;
@@ -24,6 +29,7 @@ interface SidebarProps {
   onAddNotebook: (parentId: string | null) => string | null;
   onRenameNotebook: (id: string, name: string) => void;
   onDeleteNotebook: (id: string) => void;
+  onReorderNotebook: (id: string, dir: -1 | 1) => void;
   onPickQuery: (query: string) => void;
   onOpenPreferences: () => void;
   /** Workspace root path, or null for the full view. */
@@ -39,6 +45,7 @@ export default function Sidebar(props: SidebarProps) {
   const { tree, selection } = props;
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [tagEdit, setTagEdit] = useState<{ tag: string; mode: 'rename' | 'merge'; draft: string } | null>(null);
   const [treeRef, enableTreeAnimations] = useAutoAnimate({ duration: 180, easing: 'ease-out' });
   const [tagsRef, enableTagAnimations] = useAutoAnimate({ duration: 180, easing: 'ease-out' });
   useEffect(() => {
@@ -70,12 +77,94 @@ export default function Sidebar(props: SidebarProps) {
     props.onDeleteNotebook(id);
   };
 
-  const renderNode = (node: TreeNode, depth: number): React.ReactNode => {
+  const commitTagEdit = () => {
+    if (tagEdit !== null && tagEdit.draft.trim() !== '') {
+      if (tagEdit.mode === 'rename') props.onRenameTag(tagEdit.tag, tagEdit.draft);
+      else props.onMergeTags([tagEdit.tag], tagEdit.draft);
+    }
+    setTagEdit(null);
+  };
+
+  const renderTagRow = ({ tag, count }: { tag: string; count: number }): React.ReactNode => {
+    if (tagEdit !== null && tagEdit.tag === tag) {
+      const others = props.allTags.filter((t) => t.toLowerCase() !== tag.toLowerCase());
+      return (
+        <div key={tag} className="flex items-center gap-1 rounded px-2 py-1">
+          <Hashtag size={15} className="shrink-0 opacity-70" />
+          <input
+            autoFocus
+            value={tagEdit.draft}
+            onChange={(e) => setTagEdit({ ...tagEdit, draft: e.target.value })}
+            onBlur={commitTagEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitTagEdit();
+              if (e.key === 'Escape') setTagEdit(null);
+              e.stopPropagation();
+            }}
+            onClick={(e) => e.stopPropagation()}
+            list={tagEdit.mode === 'merge' ? 'devnote-tag-merge-targets' : undefined}
+            placeholder={tagEdit.mode === 'rename' ? 'New tag name' : 'Merge into tag…'}
+            title={tagEdit.mode === 'rename' ? `Rename #${tag} (Enter saves, Esc cancels)` : `Merge #${tag} into… (Enter merges, Esc cancels)`}
+            className="w-full rounded bg-[var(--bg-raised)] px-1 py-0.5 text-sm outline-none ring-1 ring-zinc-400"
+          />
+          {tagEdit.mode === 'merge' && (
+            <datalist id="devnote-tag-merge-targets">
+              {others.map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+          )}
+        </div>
+      );
+    }
+    return (
+      <div
+        key={tag}
+        className="group flex items-center gap-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800"
+      >
+        <button
+          className="flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1 text-left text-sm"
+          title={`Filter: tag:${tag}`}
+          onClick={() => props.onPickQuery(`tag:${tag}`)}
+        >
+          <Hashtag size={15} className="shrink-0 opacity-70" />
+          <span className="flex-1 truncate">{tag}</span>
+          <span className="text-[11px] opacity-60">{count}</span>
+        </button>
+        <span className="hidden items-center pr-1 group-hover:flex">
+          <button
+            className="rounded p-0.5 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+            title={`Rename #${tag}`}
+            onClick={() => setTagEdit({ tag, mode: 'rename', draft: tag })}
+          >
+            <Edit size={13} />
+          </button>
+          <button
+            className="rounded p-0.5 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+            title={`Merge #${tag} into another tag…`}
+            onClick={() => setTagEdit({ tag, mode: 'merge', draft: '' })}
+          >
+            <ArrowCircleRight size={13} />
+          </button>
+          <button
+            className="rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900"
+            title={`Delete #${tag} from all notes`}
+            onClick={() => props.onDeleteTag(tag)}
+          >
+            <Trash size={13} />
+          </button>
+        </span>
+      </div>
+    );
+  };
+
+  const renderNode = (node: TreeNode, depth: number, siblings: TreeNode[]): React.ReactNode => {
     const { notebook } = node;
     const isSelected = selection.kind === 'notebook' && selection.id === notebook.id;
     const isExpanded = props.expanded.includes(notebook.id);
     const hasKids = node.children.length > 0;
     const count = props.counts.get(notebook.id) ?? 0;
+    const at = siblings.findIndex((s) => s.notebook.id === notebook.id);
     return (
       <div key={notebook.id}>
         <div
@@ -128,6 +217,22 @@ export default function Sidebar(props: SidebarProps) {
             {count}
           </span>
           <span className="hidden items-center group-hover:flex">
+            <button
+              className="rounded p-0.5 hover:bg-zinc-200 disabled:opacity-30 dark:hover:bg-zinc-700"
+              title="Move up among siblings"
+              disabled={at <= 0}
+              onClick={() => props.onReorderNotebook(notebook.id, -1)}
+            >
+              <ChevronUp size={13} />
+            </button>
+            <button
+              className="rounded p-0.5 hover:bg-zinc-200 disabled:opacity-30 dark:hover:bg-zinc-700"
+              title="Move down among siblings"
+              disabled={at < 0 || at >= siblings.length - 1}
+              onClick={() => props.onReorderNotebook(notebook.id, 1)}
+            >
+              <ChevronDown size={13} />
+            </button>
             <button className="rounded p-0.5 hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Open as workspace (Enter)" onClick={() => props.onFocusNotebook(notebook.id)}>
               <ArrowCircleRight size={13} />
             </button>
@@ -142,7 +247,7 @@ export default function Sidebar(props: SidebarProps) {
             </button>
           </span>
         </div>
-        {isExpanded && node.children.map((c) => renderNode(c, depth + 1))}
+        {isExpanded && node.children.map((c) => renderNode(c, depth + 1, node.children))}
       </div>
     );
   };
@@ -181,7 +286,7 @@ export default function Sidebar(props: SidebarProps) {
           <AddCircle size={16} />
         </button>
       </div>
-      <nav ref={treeRef} className="px-2">{tree.map((n) => renderNode(n, 0))}</nav>
+      <nav ref={treeRef} className="px-2">{tree.map((n) => renderNode(n, 0, tree))}</nav>
 
       <div className="px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide opacity-60">Statuses</div>
       <div className="space-y-0.5 px-2">
@@ -204,18 +309,7 @@ export default function Sidebar(props: SidebarProps) {
         {props.tagCounts.length === 0 && (
           <div className="px-2 py-1 text-xs opacity-50">No tags yet</div>
         )}
-        {props.tagCounts.map(({ tag, count }) => (
-          <button
-            key={tag}
-            className="flex w-full items-center gap-2 rounded px-2 py-1 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            title={`Filter: tag:${tag}`}
-            onClick={() => props.onPickQuery(`tag:${tag}`)}
-          >
-            <Hashtag size={15} className="opacity-70" />
-            <span className="flex-1 truncate text-left">{tag}</span>
-            <span className="text-[11px] opacity-60">{count}</span>
-          </button>
-        ))}
+        {props.tagCounts.map(renderTagRow)}
       </div>
 
       <div className="mt-auto space-y-0.5 border-t border-[var(--border)] px-2 py-2">

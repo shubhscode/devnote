@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BUILTIN_TEMPLATES,
+  STORAGE_KEYS,
   allTags,
   applyTemplate,
   buildNotebookTree,
@@ -16,6 +17,7 @@ import {
   duplicateNote,
   generateId,
   isExclusionsOnly,
+  isQuotaError,
   isValidThemeId,
   markTemplateUsed,
   nowIso,
@@ -24,16 +26,28 @@ import {
   planExport,
   planImport,
   pushRevision,
+  quarantineKey,
   renameNotebook,
+  renameTag as renameTagNotes,
+  mergeTags as mergeTagNotes,
+  moveNotes as moveNotesCore,
+  noteFilename,
+  noteToMarkdown,
+  untagNotes,
+  reorderNotebook as reorderNotebookCore,
   restoreNotes,
   searchNotes,
+  setNotesPinned,
+  setNotesStatus,
   shouldSnapshot,
   sortNotes,
+  tagNotes as tagNotesCore,
   trashNotes,
   updateCustomTemplate,
   updateNote,
 } from '@devnote/core';
-import type { Note, Notebook, NoteStatus, Revision, Template, TreeNode } from '@devnote/core';
+import type { Note, Notebook, NoteSortKey, NoteStatus, Revision, StorageAdapter, Template, TreeNode } from '@devnote/core';
+import { localStorageAdapter } from './storage';
 import { classifySyncState, conflictedPaths, parsePorcelain, resolveConflict, syncCommitMessage } from '@devnote/sync';
 import type { SyncState } from '@devnote/sync';
 
@@ -43,11 +57,11 @@ export type Selection =
   | { kind: 'notebook'; id: string }
   | { kind: 'trash' };
 
-const STORAGE_KEY = 'devnote:v1';
-const TEMPLATES_KEY = 'devnote:templates:v1';
-const RECENTS_KEY = 'devnote:template-recents:v1';
-const REVISIONS_KEY = 'devnote:revisions:v1';
-const SETTINGS_KEY = 'devnote:settings:v1';
+const STORAGE_KEY = STORAGE_KEYS.db;
+const TEMPLATES_KEY = STORAGE_KEYS.templates;
+const RECENTS_KEY = STORAGE_KEYS.recents;
+const REVISIONS_KEY = STORAGE_KEYS.revisions;
+const SETTINGS_KEY = STORAGE_KEYS.settings;
 const IDLE_SNAPSHOT_MS = 30_000;
 
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -62,6 +76,8 @@ export interface Settings {
   wordWrap: boolean;
   /** Editor font size, px (clamped 11–18). */
   fontSize: number;
+  /** Note-list order (search results always rank by relevance). */
+  noteSort: NoteSortKey;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -69,26 +85,50 @@ const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   wordWrap: true,
   fontSize: 13.5,
+  noteSort: 'updated',
 };
 
-function loadSettings(): Settings {
-  const fallback = { ...DEFAULT_SETTINGS };
+function readRaw(adapter: StorageAdapter, key: string): string | null {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) {
-      const p = JSON.parse(raw) as Partial<Settings>;
-      return {
+    return adapter.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** A loaded slice plus whether its stored payload was corrupt (quarantined). */
+interface Loaded<T> {
+  value: T;
+  corrupted: boolean;
+}
+
+function loadSettings(adapter: StorageAdapter): Loaded<Settings> {
+  const fallback = { ...DEFAULT_SETTINGS };
+  const raw = readRaw(adapter, SETTINGS_KEY);
+  if (raw === null) {
+    // One-time migration from the Phase 0/1 theme flag.
+    try {
+      const legacy = adapter.getItem('devnote:theme');
+      if (legacy === 'light' || legacy === 'dark') return { value: { ...fallback, theme: legacy }, corrupted: false };
+    } catch { /* ignore */ }
+    return { value: fallback, corrupted: false };
+  }
+  try {
+    const p = JSON.parse(raw) as Partial<Settings>;
+    return {
+      value: {
         defaultNotebookId: typeof p.defaultNotebookId === 'string' ? p.defaultNotebookId : null,
         theme: typeof p.theme === 'string' && isValidThemeId(p.theme) ? p.theme : fallback.theme,
         wordWrap: typeof p.wordWrap === 'boolean' ? p.wordWrap : fallback.wordWrap,
         fontSize: typeof p.fontSize === 'number' ? Math.min(18, Math.max(11, p.fontSize)) : fallback.fontSize,
-      };
-    }
-    // One-time migration from the Phase 0/1 theme flag.
-    const legacy = localStorage.getItem('devnote:theme');
-    if (legacy === 'light' || legacy === 'dark') return { ...fallback, theme: legacy };
-  } catch { /* ignore */ }
-  return fallback;
+        noteSort: p.noteSort === 'created' || p.noteSort === 'title' ? p.noteSort : 'updated',
+      },
+      corrupted: false,
+    };
+  } catch {
+    quarantineKey(adapter, SETTINGS_KEY);
+    return { value: fallback, corrupted: true };
+  }
 }
 
 function seedData(): { notebooks: Notebook[]; notes: Note[] } {
@@ -116,31 +156,38 @@ function seedData(): { notebooks: Notebook[]; notes: Note[] } {
   return { notebooks, notes };
 }
 
-function loadTemplates(): Template[] {
+function loadTemplates(adapter: StorageAdapter): Loaded<Template[]> {
+  const raw = readRaw(adapter, TEMPLATES_KEY);
+  if (raw === null) return { value: [], corrupted: false };
   try {
-    const raw = localStorage.getItem(TEMPLATES_KEY);
-    if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (t): t is Template =>
-        typeof t === 'object' && t !== null &&
-        typeof (t as Template).id === 'string' &&
-        typeof (t as Template).name === 'string' &&
-        typeof (t as Template).body === 'string',
-    );
+    if (!Array.isArray(parsed)) throw new Error('bad shape');
+    return {
+      value: parsed.filter(
+        (t): t is Template =>
+          typeof t === 'object' && t !== null &&
+          typeof (t as Template).id === 'string' &&
+          typeof (t as Template).name === 'string' &&
+          typeof (t as Template).body === 'string',
+      ),
+      corrupted: false,
+    };
   } catch {
-    return [];
+    quarantineKey(adapter, TEMPLATES_KEY);
+    return { value: [], corrupted: true };
   }
 }
 
-function loadRecents(): string[] {
+function loadRecents(adapter: StorageAdapter): Loaded<string[]> {
+  const raw = readRaw(adapter, RECENTS_KEY);
+  if (raw === null) return { value: [], corrupted: false };
   try {
-    const raw = localStorage.getItem(RECENTS_KEY);
-    const parsed = raw === null ? [] : (JSON.parse(raw) as unknown);
-    return Array.isArray(parsed) ? parsed.filter((r): r is string => typeof r === 'string') : [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) throw new Error('bad shape');
+    return { value: parsed.filter((r): r is string => typeof r === 'string'), corrupted: false };
   } catch {
-    return [];
+    quarantineKey(adapter, RECENTS_KEY);
+    return { value: [], corrupted: true };
   }
 }
 
@@ -155,27 +202,57 @@ function isRevision(v: unknown): v is Revision {
   );
 }
 
-function loadRevisions(): Revision[] {
+function loadRevisions(adapter: StorageAdapter): Loaded<Revision[]> {
+  const raw = readRaw(adapter, REVISIONS_KEY);
+  if (raw === null) return { value: [], corrupted: false };
   try {
-    const raw = localStorage.getItem(REVISIONS_KEY);
-    if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.filter(isRevision) : [];
+    if (!Array.isArray(parsed)) throw new Error('bad shape');
+    return { value: parsed.filter(isRevision), corrupted: false };
   } catch {
-    return [];
+    quarantineKey(adapter, REVISIONS_KEY);
+    return { value: [], corrupted: true };
   }
 }
-function load(): { notebooks: Notebook[]; notes: Note[] } {
+function loadDB(adapter: StorageAdapter): Loaded<{ notebooks: Notebook[]; notes: Note[] }> {
+  const raw = readRaw(adapter, STORAGE_KEY);
+  if (raw === null) return { value: seedData(), corrupted: false };
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return seedData();
     const parsed = JSON.parse(raw) as { notebooks?: Notebook[]; notes?: Note[] };
-    if (!Array.isArray(parsed.notebooks) || !Array.isArray(parsed.notes)) return seedData();
-    return { notebooks: parsed.notebooks, notes: parsed.notes };
+    if (!Array.isArray(parsed.notebooks) || !Array.isArray(parsed.notes)) throw new Error('bad shape');
+    return { value: { notebooks: parsed.notebooks, notes: parsed.notes }, corrupted: false };
   } catch {
-    return seedData();
+    // Corrupt payload quarantined to devnote:corrupt:* — never overwritten silently.
+    quarantineKey(adapter, STORAGE_KEY);
+    return { value: seedData(), corrupted: true };
   }
 }
+
+/** Single parse of every persisted slice (Batch A: one load path for the future SQLite swap). */
+export function loadPersisted(adapter: StorageAdapter) {
+  const db = loadDB(adapter);
+  const templates = loadTemplates(adapter);
+  const recents = loadRecents(adapter);
+  const revisions = loadRevisions(adapter);
+  const settings = loadSettings(adapter);
+  const corruptedKeys: string[] = [];
+  if (db.corrupted) corruptedKeys.push(STORAGE_KEY);
+  if (templates.corrupted) corruptedKeys.push(TEMPLATES_KEY);
+  if (recents.corrupted) corruptedKeys.push(RECENTS_KEY);
+  if (revisions.corrupted) corruptedKeys.push(REVISIONS_KEY);
+  if (settings.corrupted) corruptedKeys.push(SETTINGS_KEY);
+  return {
+    notebooks: db.value.notebooks,
+    notes: db.value.notes,
+    customTemplates: templates.value,
+    templateRecents: recents.value,
+    revisions: revisions.value,
+    settings: settings.value,
+    corruptedKeys,
+  };
+}
+
+export type PersistedState = ReturnType<typeof loadPersisted>;
 
 export type SearchScope = 'local' | 'global';
 
@@ -204,15 +281,16 @@ export function computeVisible(
   expanded: string[],
   rawQuery: string,
   _scope: SearchScope = 'global',
+  sortKey: NoteSortKey = 'updated',
 ): Note[] {
   const base = filterBySelectionDirect(notes, notebooks, selection, expanded);
   const q = rawQuery.trim();
-  if (q === '') return sortNotes(base);
+  if (q === '') return sortNotes(base, sortKey);
   return searchNotes(base, notebooks, q).map((s) => s.note);
 }
 
-export function useDevnoteStore() {
-  const [initial] = useState(load);
+export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
+  const [initial] = useState(() => loadPersisted(adapter));
   const [notebooks, setNotebooks] = useState<Notebook[]>(initial.notebooks);
   const [notes, setNotes] = useState<Note[]>(initial.notes);
   const [selection, setSelection] = useState<Selection>({ kind: 'all' });
@@ -231,36 +309,41 @@ export function useDevnoteStore() {
     // Debounced: stringifying thousands of notes per keystroke janks.
     const t = setTimeout(() => {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ notebooks, notes }));
-      } catch {
-        // Quota/privacy mode — session-only. Non-fatal.
+        adapter.setItem(STORAGE_KEY, JSON.stringify({ notebooks, notes }));
+      } catch (e) {
+        // Quota/privacy mode — session-only. Quota gets a loud warning; privacy stays silent.
+        if (isQuotaError(e)) {
+          setNotice('Storage full — changes kept for this session only. Export a backup or prune revision history.');
+        }
       }
     }, 400);
     return () => clearTimeout(t);
-  }, [notebooks, notes]);
+  }, [notebooks, notes, adapter]);
 
   useEffect(() => {
     // Never lose the trailing debounced write on tab close.
     const flush = () => {
       try {
         const cur = live.current;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ notebooks: cur.notebooks, notes: cur.notes }));
+        adapter.setItem(STORAGE_KEY, JSON.stringify({ notebooks: cur.notebooks, notes: cur.notes }));
       } catch { /* ignore */ }
     };
     window.addEventListener('pagehide', flush);
     return () => window.removeEventListener('pagehide', flush);
-  }, []);
+  }, [adapter]);
 
-  const [customTemplates, setCustomTemplates] = useState<Template[]>(loadTemplates);
-  const [templateRecents, setTemplateRecents] = useState<string[]>(loadRecents);
-  const [revisions, setRevisions] = useState<Revision[]>(loadRevisions);
-  const [settings, setSettings] = useState<Settings>(loadSettings);
+  const [customTemplates, setCustomTemplates] = useState<Template[]>(initial.customTemplates);
+  const [templateRecents, setTemplateRecents] = useState<string[]>(initial.templateRecents);
+  const [revisions, setRevisions] = useState<Revision[]>(initial.revisions);
+  const [settings, setSettings] = useState<Settings>(initial.settings);
 
   useEffect(() => {
     try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch { /* ignore */ }
-  }, [settings]);
+      adapter.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e) {
+      if (isQuotaError(e)) setNotice('Storage full — settings kept for this session only.');
+    }
+  }, [settings, adapter]);
 
   const updateSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((s) => ({
@@ -273,7 +356,7 @@ export function useDevnoteStore() {
   }, []);
 
   // Fresh-state refs so snapshot helpers never close over stale state.
-  const live = useRef({ notes: initial.notes, notebooks: initial.notebooks, revisions: loadRevisions() });
+  const live = useRef({ notes: initial.notes, notebooks: initial.notebooks, revisions: initial.revisions });
   live.current = { notes, notebooks, revisions };
   const activeIdRef = useRef<string | null>(initial.notes[0]?.id ?? null);
   useEffect(() => {
@@ -290,25 +373,65 @@ export function useDevnoteStore() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(TEMPLATES_KEY, JSON.stringify(customTemplates));
+      adapter.setItem(TEMPLATES_KEY, JSON.stringify(customTemplates));
     } catch { /* ignore */ }
-  }, [customTemplates]);
+  }, [customTemplates, adapter]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(RECENTS_KEY, JSON.stringify(templateRecents));
+      adapter.setItem(RECENTS_KEY, JSON.stringify(templateRecents));
     } catch { /* ignore */ }
-  }, [templateRecents]);
+  }, [templateRecents, adapter]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(REVISIONS_KEY, JSON.stringify(revisions));
+      adapter.setItem(REVISIONS_KEY, JSON.stringify(revisions));
     } catch { /* ignore */ }
-  }, [revisions]);
+  }, [revisions, adapter]);
 
   const fail = useCallback((e: unknown) => {
     setNotice(e instanceof Error ? e.message : 'Something went wrong');
   }, []);
+
+  // Corrupt payloads were quarantined during load — say so once, loudly.
+  useEffect(() => {
+    if (initial.corruptedKeys.length > 0) {
+      setNotice(
+        `Recovered from corrupt saved data (${initial.corruptedKeys.join(', ')}). Bad copy kept as backup — export a backup from Preferences.`,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cross-tab: another tab wrote our keys — reload that slice, keep typing safe.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || e.newValue === null) return;
+      try {
+        if (e.key === STORAGE_KEY) {
+          const db = loadDB(adapter);
+          if (db.corrupted) return;
+          setNotebooks(db.value.notebooks);
+          setNotes(db.value.notes);
+          setNotice('Notes updated from another tab');
+        } else if (e.key === SETTINGS_KEY) {
+          const s = loadSettings(adapter);
+          if (!s.corrupted) setSettings(s.value);
+        } else if (e.key === TEMPLATES_KEY) {
+          const t = loadTemplates(adapter);
+          if (!t.corrupted) setCustomTemplates(t.value);
+        } else if (e.key === RECENTS_KEY) {
+          const r = loadRecents(adapter);
+          if (!r.corrupted) setTemplateRecents(r.value);
+        } else if (e.key === REVISIONS_KEY) {
+          const r = loadRevisions(adapter);
+          if (!r.corrupted) setRevisions(r.value);
+        }
+      } catch { /* keep current state on bad cross-tab payload */ }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [adapter]);
 
   /** Snapshot a note if its content differs from its newest revision. Deduped per content. */
   const snapshotNote = useCallback((noteId: string) => {
@@ -388,10 +511,10 @@ export function useDevnoteStore() {
   const visibleNotes: Note[] = useMemo(
     () => {
       const q = query.trim();
-      if (q === '') return sortNotes(filteredBySelection);
+      if (q === '') return sortNotes(filteredBySelection, settings.noteSort);
       return searchNotes(filteredBySelection, notebooks, q).map((s) => s.note);
     },
-    [filteredBySelection, notebooks, query, scope],
+    [filteredBySelection, notebooks, query, scope, settings.noteSort],
   );
 
   const exclusionsOnly = useMemo(
@@ -465,10 +588,10 @@ export function useDevnoteStore() {
     setSelectedIds([]);
     setQuery('');
     setScope('local');
-    setActiveNoteId(computeVisible(notes, notebooks, s, expanded, '', 'local')[0]?.id ?? null);
+    setActiveNoteId(computeVisible(notes, notebooks, s, expanded, '', 'local', settings.noteSort)[0]?.id ?? null);
     setPast([]);
     setFuture([]);
-  }, [notes, notebooks, expanded, snapshotNote, workspaceId]);
+  }, [notes, notebooks, expanded, snapshotNote, workspaceId, settings.noteSort]);
 
   /** Focus a notebook as workspace: sidebar scopes to its subtree. */
   const focusWorkspace = useCallback((id: string) => {
@@ -484,10 +607,10 @@ export function useDevnoteStore() {
     setSelectedIds([]);
     setQuery('');
     setScope('local');
-    setActiveNoteId(computeVisible(notes, notebooks, s, expanded, '', 'local')[0]?.id ?? null);
+    setActiveNoteId(computeVisible(notes, notebooks, s, expanded, '', 'local', settings.noteSort)[0]?.id ?? null);
     setPast([]);
     setFuture([]);
-  }, [notes, notebooks, expanded, snapshotNote, fail]);
+  }, [notes, notebooks, expanded, snapshotNote, fail, settings.noteSort]);
 
   const clearWorkspace = useCallback(() => {
     setWorkspaceId(null);
@@ -717,6 +840,89 @@ export function useDevnoteStore() {
     }
   }, [fail]);
 
+  /** Shift-click range: anchor = last selected (else active), union over visible order. */
+  const selectRange = useCallback((id: string) => {
+    const order = visibleNotes.map((n) => n.id);
+    if (!order.includes(id)) return;
+    const anchor = selectedIds.length > 0 ? selectedIds[selectedIds.length - 1]! : activeIdRef.current;
+    if (anchor === null || !order.includes(anchor)) {
+      setSelectedIds([id]);
+    } else {
+      const [a, b] = [order.indexOf(anchor), order.indexOf(id)].sort((x, y) => x - y) as [number, number];
+      const range = order.slice(a, b + 1);
+      setSelectedIds((s) => [...new Set([...s, ...range])]);
+    }
+    setActiveNoteId(id);
+  }, [visibleNotes, selectedIds]);
+
+  const moveNotesTo = useCallback((ids: string[], notebookId: string) => {
+    try {
+      setNotes((ns) => moveNotesCore(ns, notebooks, ids, notebookId));
+    } catch (e) {
+      fail(e);
+    }
+  }, [notebooks, fail]);
+
+  const bulkTag = useCallback((ids: string[], tag: string) => {
+    try {
+      setNotes((ns) => tagNotesCore(ns, ids, tag));
+    } catch (e) {
+      fail(e);
+    }
+  }, [fail]);
+
+  const bulkStatus = useCallback((ids: string[], status: NoteStatus) => {
+    try {
+      setNotes((ns) => setNotesStatus(ns, ids, status));
+    } catch (e) {
+      fail(e);
+    }
+  }, [fail]);
+
+  const bulkPin = useCallback((ids: string[], pinned: boolean) => {
+    try {
+      setNotes((ns) => setNotesPinned(ns, ids, pinned));
+    } catch (e) {
+      fail(e);
+    }
+  }, [fail]);
+
+  /** Download selected notes as individual Markdown files (reimportable via mirror). */
+  const exportNotes = useCallback((ids: string[]) => {
+    try {
+      const set = new Set(ids);
+      const targets = notes.filter((n) => set.has(n.id));
+      if (targets.length === 0) {
+        setNotice('Nothing selected');
+        return;
+      }
+      targets.forEach((note, i) => {
+        const blob = new Blob([noteToMarkdown(note, notebooks)], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = noteFilename(note);
+        document.body.appendChild(a);
+        window.setTimeout(() => {
+          a.click();
+          document.body.removeChild(a);
+          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }, i * 150);
+      });
+      setNotice(`Exported ${targets.length} note${targets.length === 1 ? '' : 's'} as Markdown`);
+    } catch (e) {
+      fail(e);
+    }
+  }, [notes, notebooks, fail]);
+
+  const reorderNotebook = useCallback((id: string, dir: -1 | 1) => {
+    try {
+      setNotebooks((ns) => reorderNotebookCore(ns, id, dir));
+    } catch (e) {
+      fail(e);
+    }
+  }, [fail]);
+
   const addNotebook = useCallback((parentId: string | null): string | null => {
     try {
       const next = createNotebook(notebooks, { name: 'Untitled notebook', parentId });
@@ -732,6 +938,33 @@ export function useDevnoteStore() {
   const rename = useCallback((id: string, name: string) => {
     try {
       setNotebooks((ns) => renameNotebook(ns, id, name));
+    } catch (e) {
+      fail(e);
+    }
+  }, [fail]);
+
+  const renameTag = useCallback((oldName: string, newName: string) => {
+    try {
+      setNotes((ns) => renameTagNotes(ns, oldName, newName));
+      if (query.trim().toLowerCase() === `tag:${oldName.trim().toLowerCase()}`) {
+        setQuery(`tag:${newName.trim()}`);
+      }
+    } catch (e) {
+      fail(e);
+    }
+  }, [query, fail]);
+
+  const mergeTags = useCallback((from: string[], into: string) => {
+    try {
+      setNotes((ns) => mergeTagNotes(ns, from, into));
+    } catch (e) {
+      fail(e);
+    }
+  }, [fail]);
+
+  const deleteTag = useCallback((name: string) => {
+    try {
+      setNotes((ns) => untagNotes(ns, name));
     } catch (e) {
       fail(e);
     }
@@ -859,7 +1092,9 @@ export function useDevnoteStore() {
     past, future, notice, visibleNotes, exclusionsOnly,
     setQuery, setScope, toggleScope, setNotice, select, openNote, navigateTo, goBack, goForward,
     newNote, commitPatch, duplicate, trash, restore, destroy,
-    addNotebook, rename, removeNotebook, toggleExpand, workspaceId, focusWorkspace, clearWorkspace, toggleWorkspace,
+    moveNotesTo, bulkTag, bulkStatus, bulkPin, exportNotes, selectRange, setSelectedIds,
+    addNotebook, rename, removeNotebook, reorderNotebook, toggleExpand, workspaceId, focusWorkspace, clearWorkspace, toggleWorkspace,
+    renameTag, mergeTags, deleteTag,
     allTemplates, templateRecents, externalBodyWrite, revisions, settings, mirrorDir,
     createTemplate, updateTemplate, deleteTemplate, duplicateTemplate, applyTemplateToNote,
     snapshotNote, snapshotIdle, restoreRevision, updateSettings,

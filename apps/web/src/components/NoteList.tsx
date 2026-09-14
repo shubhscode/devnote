@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
-import { Archive, Command, Filter, Global, Magnifier, Pin, Plus, Sidebar as SidebarIcon, Trash } from 'reicon-react';
-import { bestSnippet, parseSearch, titleRanges, type Range, type SearchTerm } from '@devnote/core';
+import { useMemo, useState } from 'react';
+import { Archive, Command, Copy, Download, Filter, Global, Magnifier, Pin, Plus, Sidebar as SidebarIcon, Trash } from 'reicon-react';
+import { NOTE_STATUSES, bestSnippet, parseSearch, titleRanges, type NoteSortKey, type NoteStatus, type Range, type SearchTerm } from '@devnote/core';
 import type { Note } from '@devnote/core';
 import type { SearchScope } from '../lib/store';
-import { StatusPill } from './StatusPill';
+import { StatusPill, STATUS_META } from './StatusPill';
 
 interface NoteListProps {
   notes: Note[];
@@ -15,15 +15,26 @@ interface NoteListProps {
   isTrash: boolean;
   exclusionsOnly: boolean;
   sidebarOpen: boolean;
+  sortKey: NoteSortKey;
+  onSortChange: (k: NoteSortKey) => void;
   onQuery: (q: string) => void;
   onToggleScope: () => void;
   onOpenTelescope: () => void;
   onOpen: (id: string, modClick: boolean) => void;
+  onRangeSelect: (id: string) => void;
+  onSelectAll: () => void;
+  onClearSelection: () => void;
   onNew: () => void;
   onToggleSidebar: () => void;
   onTrashSelected: () => void;
   onRestoreSelected: () => void;
   onDeleteSelected: () => void;
+  onMoveSelected: () => void;
+  onTagSelected: (tag: string) => void;
+  onStatusSelected: (s: NoteStatus) => void;
+  onPinSelected: (pinned: boolean) => void;
+  onDuplicateSelected: () => void;
+  onExportSelected: () => void;
 }
 
 /** Render cap — long lists stay fast; the count line shows the total. */
@@ -53,19 +64,23 @@ export function Marked({ text, ranges }: { text: string; ranges: Range[] }) {
 
 /** Memoized note row — re-renders only when note identity, active, selected, or terms change. */
 const NoteRow = ({
-  note, isActive, isChecked, terms, onOpen,
+  note, isActive, isChecked, terms, onOpen, onRangeSelect,
 }: {
   note: Note;
   isActive: boolean;
   isChecked: boolean;
   terms: SearchTerm[];
   onOpen: (id: string, modClick: boolean) => void;
+  onRangeSelect: (id: string) => void;
 }) => {
   const snip = useMemo(() => bestSnippet(note.body, terms), [note.body, terms]);
   const titleR = useMemo(() => titleRanges(note.title, terms), [note.title, terms]);
   return (
     <div
-      onClick={(e) => onOpen(note.id, e.metaKey || e.ctrlKey)}
+      onClick={(e) => {
+        if (e.shiftKey) onRangeSelect(note.id);
+        else onOpen(note.id, e.metaKey || e.ctrlKey);
+      }}
       className={`note-row-in cursor-default border-b border-[var(--border-soft)] px-3 py-2.5 ${isActive ? 'bg-[var(--accent-soft)]' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900'} ${isChecked && !isActive ? 'bg-[var(--accent-soft)]' : ''}`}
     >
       <div className="flex items-center gap-1.5">
@@ -99,9 +114,29 @@ export default function NoteList(props: NoteListProps) {
   const multi = props.selectedIds.length > 1;
   const terms = useMemo(() => parseSearch(props.query), [props.query]);
   const shown = props.notes.slice(0, RENDER_CAP);
+  const [tagging, setTagging] = useState(false);
+  const [tagDraft, setTagDraft] = useState('');
+  const allVisibleSelected = props.notes.length > 0 && props.notes.every((n) => props.selectedIds.includes(n.id));
+  const selectedNotes = props.notes.filter((n) => props.selectedIds.includes(n.id));
+  const allPinned = selectedNotes.length > 0 && selectedNotes.every((n) => n.pinned);
+
+  const commitTag = () => {
+    if (tagDraft.trim() !== '') props.onTagSelected(tagDraft.trim());
+    setTagDraft('');
+    setTagging(false);
+  };
 
   return (
-    <section className="flex w-80 flex-col border-r border-[var(--border)] bg-[var(--bg-list)]">
+    <section
+      className="flex w-80 flex-col border-r border-[var(--border)] bg-[var(--bg-list)]"
+      onKeyDown={(e) => {
+        // Scoped select-all: never steals mod+A from the editor.
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+          e.preventDefault();
+          props.onSelectAll();
+        }
+      }}
+    >
       <div className="flex items-center gap-1.5 border-b border-[var(--border)] p-2">
         <button className="rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Toggle sidebar (mod+/)" onClick={props.onToggleSidebar}>
           <SidebarIcon size={16} />
@@ -134,9 +169,28 @@ export default function NoteList(props: NoteListProps) {
         </button>
       </div>
 
-      <div className="border-b border-[var(--border)] px-3 py-1.5 text-xs opacity-60">
-        {props.label} · {props.notes.length} note{props.notes.length === 1 ? '' : 's'}
-        {props.scope === 'global' && !props.isTrash ? ' · global' : ''}
+      <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-1.5 text-xs">
+        <span className="min-w-0 flex-1 truncate opacity-60">
+          {props.label} · {props.notes.length} note{props.notes.length === 1 ? '' : 's'}
+          {props.scope === 'global' && !props.isTrash ? ' · global' : ''}
+        </span>
+        <button
+          className="shrink-0 rounded px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          title={allVisibleSelected ? 'Clear selection' : 'Select all visible (mod+A)'}
+          onClick={allVisibleSelected ? props.onClearSelection : props.onSelectAll}
+        >
+          {allVisibleSelected ? 'Clear' : 'Select all'}
+        </button>
+        <select
+          value={props.sortKey}
+          onChange={(e) => props.onSortChange(e.target.value as NoteSortKey)}
+          title={props.query.trim() === '' ? 'List order (search results always rank by relevance)' : 'List order (applies when search is clear)'}
+          className="shrink-0 rounded bg-transparent py-0.5 outline-none hover:bg-zinc-100 dark:hover:bg-zinc-800"
+        >
+          <option value="updated">Updated</option>
+          <option value="created">Created</option>
+          <option value="title">Title</option>
+        </select>
       </div>
 
       {props.exclusionsOnly && (
@@ -146,8 +200,8 @@ export default function NoteList(props: NoteListProps) {
       )}
 
       {multi && (
-        <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-sunken)] px-3 py-1.5 text-sm">
-          <span className="text-xs opacity-70">{props.selectedIds.length} selected</span>
+        <div className="flex flex-wrap items-center gap-1 border-b border-[var(--border)] bg-[var(--bg-sunken)] px-3 py-1.5 text-sm">
+          <span className="mr-auto text-xs opacity-70">{props.selectedIds.length} selected</span>
           {props.isTrash ? (
             <>
               <button className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" onClick={props.onRestoreSelected}>
@@ -158,9 +212,59 @@ export default function NoteList(props: NoteListProps) {
               </button>
             </>
           ) : (
-            <button className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" onClick={props.onTrashSelected}>
-              <Trash size={13} /> Trash
-            </button>
+            <>
+              <button className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Move to notebook…" onClick={props.onMoveSelected}>
+                <Archive size={13} /> Move…
+              </button>
+              {tagging ? (
+                <input
+                  autoFocus
+                  value={tagDraft}
+                  onChange={(e) => setTagDraft(e.target.value)}
+                  onBlur={commitTag}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitTag();
+                    if (e.key === 'Escape') { setTagDraft(''); setTagging(false); }
+                    e.stopPropagation();
+                  }}
+                  placeholder="Add tag… (Enter)"
+                  title="Add tag to selected notes (Enter saves, Esc cancels)"
+                  className="w-24 rounded bg-[var(--bg-raised)] px-1.5 py-1 text-xs outline-none ring-1 ring-zinc-400"
+                />
+              ) : (
+                <button className="rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Add tag to selected" onClick={() => setTagging(true)}>
+                  #Tag
+                </button>
+              )}
+              <select
+                value=""
+                onChange={(e) => { if (e.target.value !== '') props.onStatusSelected(e.target.value as NoteStatus); }}
+                title="Set status for selected"
+                className="max-w-24 rounded bg-transparent px-1 py-1 text-xs outline-none hover:bg-zinc-200 dark:hover:bg-zinc-700"
+              >
+                <option value="">Status…</option>
+                {NOTE_STATUSES.filter((s) => s !== 'none').map((s) => (
+                  <option key={s} value={s}>{STATUS_META[s].label}</option>
+                ))}
+                <option value="none">No status</option>
+              </select>
+              <button
+                className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                title={allPinned ? 'Unpin selected' : 'Pin selected to top'}
+                onClick={() => props.onPinSelected(!allPinned)}
+              >
+                <Pin size={13} weight={allPinned ? 'Filled' : 'Outline'} /> {allPinned ? 'Unpin' : 'Pin'}
+              </button>
+              <button className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Duplicate selected" onClick={props.onDuplicateSelected}>
+                <Copy size={13} />
+              </button>
+              <button className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" title="Export selected as Markdown files" onClick={props.onExportSelected}>
+                <Download size={13} />
+              </button>
+              <button className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-zinc-200 dark:hover:bg-zinc-700" onClick={props.onTrashSelected}>
+                <Trash size={13} /> Trash
+              </button>
+            </>
           )}
         </div>
       )}
@@ -182,6 +286,7 @@ export default function NoteList(props: NoteListProps) {
               isChecked={isChecked}
               terms={terms}
               onOpen={props.onOpen}
+              onRangeSelect={props.onRangeSelect}
             />
           );
         })}

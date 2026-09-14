@@ -8,6 +8,7 @@ import {
   moveNotebook,
   notebookPath,
   renameNotebook,
+  reorderNotebook,
   nowIso,
 } from './index';
 import type { Notebook, Note } from './index';
@@ -96,6 +97,25 @@ describe('deleteNotebook', () => {
   it('deletes empty notebooks, ignores trashed notes', () => {
     const next = deleteNotebook([nb('a', 'A')], [note('n1', 'a', true)], 'a');
     expect(next).toHaveLength(0);
+  });
+});
+
+describe('reorderNotebook', () => {
+  it('swaps sortOrder with the neighbour, scoped to siblings', () => {
+    const books = [nb('a', 'A', null, 0), nb('b', 'B', null, 1), nb('c', 'C', null, 2), nb('k', 'K', 'a', 0)];
+    const next = reorderNotebook(books, 'b', 1);
+    expect(next.find((n) => n.id === 'b')?.sortOrder).toBe(2);
+    expect(next.find((n) => n.id === 'c')?.sortOrder).toBe(1);
+    expect(next.find((n) => n.id === 'k')?.sortOrder).toBe(0); // other subtree untouched
+    const order = buildNotebookTree(next).map((t) => t.notebook.id);
+    expect(order).toEqual(['a', 'c', 'b']);
+  });
+
+  it('throws at edges and on missing id', () => {
+    const books = [nb('a', 'A', null, 0), nb('b', 'B', null, 1)];
+    expect(() => reorderNotebook(books, 'a', -1)).toThrow(/already first/);
+    expect(() => reorderNotebook(books, 'b', 1)).toThrow(/already last/);
+    expect(() => reorderNotebook(books, 'missing', 1)).toThrow(/not found/);
   });
 });
 
