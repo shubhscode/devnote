@@ -5,6 +5,10 @@ import { isColorCode, renderMarkdown } from '@devnote/preview';
 
 interface Props {
   markdown: string;
+  /** Task checkbox clicked in preview (index = setTaskChecked order). */
+  onTaskToggle?: (index: number, checked: boolean) => void;
+  /** Preview heading clicked (index = TOC heading order). */
+  onHeadingClick?: (index: number) => void;
 }
 
 /**
@@ -50,6 +54,26 @@ export default function PreviewView(props: Props) {
       pre.appendChild(btn);
     }
   }, [html]);
+
+  // Delegated clicks on sanitized output: task checkboxes + heading anchors.
+  useEffect(() => {
+    const root = hostRef.current;
+    if (!root || (!props.onTaskToggle && !props.onHeadingClick)) return;
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const box = target.closest('input[data-task-index]') as HTMLInputElement | null;
+      if (box && props.onTaskToggle) {
+        props.onTaskToggle(Number(box.dataset.taskIndex), box.checked);
+        return;
+      }
+      const heading = target.closest('[data-heading-index]') as HTMLElement | null;
+      if (heading && props.onHeadingClick) {
+        props.onHeadingClick(Number(heading.dataset.headingIndex));
+      }
+    };
+    root.addEventListener('click', onClick);
+    return () => root.removeEventListener('click', onClick);
+  }, [html, props.onTaskToggle, props.onHeadingClick]);
 
   // Sanitized by @devnote/preview — safe to inject (AGENTS.md §5).
   return <div ref={hostRef} className="markdown-body" dangerouslySetInnerHTML={{ __html: html }} />;

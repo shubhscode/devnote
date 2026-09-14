@@ -3,9 +3,11 @@ import {
   Archive, Copy, Edit as EditIcon, Eye, History,
   Layout, More, Pin, Plus, Trash, X,
 } from 'reicon-react';
-import { allTags, notebookPath } from '@devnote/core';
+import { allTags, BUNDLED_THEMES, getTheme, notebookPath, noteFilename, noteToMarkdown, wordStats } from '@devnote/core';
 import type { EditorView } from '@devnote/editor';
+import { EditorView as CMView, extractToc } from '@devnote/editor';
 import type { MutableRefObject } from 'react';
+import { exportHtmlDoc, setTaskChecked } from '@devnote/preview';
 import { useDevnote } from '../lib/store';
 import { StatusSelect } from './StatusPill';
 import EditorBubbleMenu from './EditorBubbleMenu';
@@ -24,6 +26,8 @@ interface EditorProps {
   onModeChange: (m: ViewMode) => void;
   /** Shared EditorView handle (owned by App — Telescope jumps need it too). */
   viewRef: MutableRefObject<EditorView | null>;
+  /** Jump when no editor view is mounted (preview-only mode) — App mounts it. */
+  onRequestJump: (pos: number) => void;
   onChooseTemplate: () => void;
   onOpenHistory: () => void;
   onRestore: (id: string) => void;
@@ -46,14 +50,22 @@ export default function Editor(props: EditorProps) {
   const wrap = useDevnote((s) => s.settings.wordWrap);
   const externalBody = useDevnote((s) => s.externalBodyWrite);
   const commitPatch = useDevnote((s) => s.commitPatch);
+  const commitBodyExternal = useDevnote((s) => s.commitBodyExternal);
   const newNote = useDevnote((s) => s.newNote);
   const duplicateNote = useDevnote((s) => s.duplicate);
   const trashNote = useDevnote((s) => s.trash);
+  const themeId = useDevnote((s) => s.settings.theme);
   const notesForTags = useDevnote((s) => s.notes);
   const tagSuggestions = useMemo(
     () => allTags(notesForTags).filter((t) => !(note?.tags.includes(t) ?? false)),
     [notesForTags, note],
   );
+  const stats = useMemo(() => wordStats(note?.body ?? ''), [note]);
+  const headings = useMemo(
+    () => extractToc(note?.body ?? '').filter((e) => e.kind === 'heading'),
+    [note],
+  );
+  const [outlineOpen, setOutlineOpen] = useState(false);
   const { mode } = props;
   const [tagInput, setTagInput] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -111,6 +123,65 @@ export default function Editor(props: EditorProps) {
     setTagInput('');
   };
 
+  const jumpToPos = (pos: number) => {
+    const v = viewRef.current;
+    if (!v) {
+      props.onRequestJump(pos);
+      return;
+    }
+    const line = v.state.doc.lineAt(Math.min(pos, v.state.doc.length));
+    v.dispatch({
+      selection: { anchor: line.from },
+      effects: CMView.scrollIntoView(line.from, { y: 'center' }),
+    });
+    v.focus();
+    setOutlineOpen(false);
+  };
+
+  const toggleTask = (index: number, checked: boolean) => {
+    commitBodyExternal(note.id, setTaskChecked(note.body, index, checked));
+  };
+
+  const jumpToHeading = (headingIndex: number) => {
+    const entry = headings[headingIndex];
+    if (entry) jumpToPos(entry.pos);
+  };
+
+  const download = (filename: string, content: string, type: string) => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const exportMarkdown = () => {
+    download(noteFilename(note), noteToMarkdown(note, notebooks), 'text/markdown');
+  };
+
+  const exportHtml = () => {
+    const theme = getTheme(BUNDLED_THEMES, themeId);
+    const base = noteFilename(note).replace(/\.md$/, '');
+    download(`${base}.html`, exportHtmlDoc(note.title, note.body, { variables: theme.variables }), 'text/html');
+  };
+
+  const printPdf = () => {
+    const theme = getTheme(BUNDLED_THEMES, themeId);
+    const frame = document.createElement('iframe');
+    frame.style.display = 'none';
+    frame.srcdoc = exportHtmlDoc(note.title, note.body, { variables: theme.variables });
+    frame.onload = () => {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+      window.setTimeout(() => frame.remove(), 1000);
+    };
+    document.body.appendChild(frame);
+  };
+
   const fmtBtn = 'rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800';
   const showEditor = mode === 'edit' || mode === 'split';
 
@@ -143,6 +214,33 @@ export default function Editor(props: EditorProps) {
         <button className={fmtBtn} title="Preview only (mod+E)" onClick={() => props.onModeChange('preview')}>
           <Eye size={15} weight={mode === 'preview' ? 'Filled' : 'Outline'} className="opacity-70" />
         </button>
+        <div className="relative">
+          <button
+            className={`${fmtBtn} px-2 text-xs ${outlineOpen ? 'bg-zinc-100 dark:bg-zinc-800' : ''}`}
+            title="Table of contents outline"
+            onClick={() => setOutlineOpen((v) => !v)}
+          >
+            Outline
+          </button>
+          {outlineOpen && (
+            <div className="absolute right-0 z-30 mt-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] py-1 shadow-xl">
+              {headings.length === 0 && (
+                <div className="px-2.5 py-1.5 text-xs opacity-50">No headings yet</div>
+              )}
+              {headings.map((h, i) => (
+                <button
+                  key={`${h.pos}-${i}`}
+                  className="block w-full truncate px-2.5 py-1.5 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  style={{ paddingLeft: `${10 + (h.level ?? 1) * 10}px` }}
+                  title={h.text}
+                  onClick={() => jumpToHeading(i)}
+                >
+                  {h.text}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div ref={menuRef} className="relative">
           <button className={fmtBtn} title="More actions" onClick={() => setMenuOpen((v) => !v)}>
             <More size={15} className="opacity-60" />
@@ -172,6 +270,28 @@ export default function Editor(props: EditorProps) {
                   <Trash size={14} className="opacity-70" /> Move to trash
                 </button>
               )}
+              <div className="mx-2 my-1 border-t border-[var(--border)]" />
+              <button
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                title="Download as Markdown (reimportable)"
+                onClick={() => { setMenuOpen(false); exportMarkdown(); }}
+              >
+                <Copy size={14} className="opacity-70" /> Export Markdown
+              </button>
+              <button
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                title="Download as styled HTML"
+                onClick={() => { setMenuOpen(false); exportHtml(); }}
+              >
+                <Copy size={14} className="opacity-70" /> Export HTML
+              </button>
+              <button
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                title="Print or save as PDF"
+                onClick={() => { setMenuOpen(false); printPdf(); }}
+              >
+                <Copy size={14} className="opacity-70" /> Print / PDF
+              </button>
             </div>
           )}
         </div>
@@ -262,10 +382,16 @@ export default function Editor(props: EditorProps) {
         {(mode === 'preview' || mode === 'split') && (
           <div className={`min-h-0 overflow-y-auto px-5 py-3 ${mode === 'split' ? 'w-1/2' : 'flex-1'}`}>
             <Suspense fallback={<div className="py-8 text-center text-sm opacity-50">Rendering preview…</div>}>
-              <PreviewView markdown={note.body} />
+              <PreviewView markdown={note.body} onTaskToggle={toggleTask} onHeadingClick={jumpToHeading} />
             </Suspense>
           </div>
         )}
+      </div>
+
+      <div className="flex items-center gap-3 border-t border-[var(--border)] px-4 py-1 text-[11px] opacity-60">
+        <span title="Word count (fenced code excluded)">{stats.words} words</span>
+        <span>{stats.chars} chars</span>
+        <span>~{stats.readingMinutes < 1 ? '<1' : stats.readingMinutes} min read</span>
       </div>
     </main>
   );

@@ -119,6 +119,9 @@ export interface NotePatch {
 export interface DataActions {
   newNote: () => void;
   commitPatch: (id: string, patch: NotePatch) => void;
+  /** Commit a body rewrite from outside the editor (preview toggle): updates
+   *  the note AND pushes an externalBodyWrite so the mounted view applies it. */
+  commitBodyExternal: (id: string, body: string) => void;
   duplicate: (ids: string[]) => void;
   trash: (ids: string[]) => void;
   restore: (ids: string[], targetNotebookId: string) => void;
@@ -272,6 +275,18 @@ export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter
         } catch (e) {
           fail(e);
         }
+      },
+
+      commitBodyExternal: (id, body) => {
+        try {
+          set((s) => ({ notes: updateNote(s.notes, s.notebooks, id, { body }) }));
+          editClock.lastEditAt = Date.now();
+        } catch (e) {
+          fail(e);
+          return;
+        }
+        externalWriteSeq.current += 1;
+        set({ externalBodyWrite: { noteId: id, body, seq: externalWriteSeq.current } });
       },
 
       duplicate: (ids) => {

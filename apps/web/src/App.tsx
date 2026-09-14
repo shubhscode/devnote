@@ -507,6 +507,7 @@ export default function App() {
         mode={viewMode}
         onModeChange={setViewMode}
         viewRef={editorViewRef}
+        onRequestJump={jumpToPos}
         onChooseTemplate={() => setTemplatePickerOpen(true)}
         onOpenHistory={() => { if (activeNoteId !== null) setHistoryNoteId(activeNoteId); }}
         onRestore={(id) => setRestoreIds([id])}
