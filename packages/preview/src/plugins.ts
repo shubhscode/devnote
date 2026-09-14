@@ -30,6 +30,19 @@ function addClass(node: Element, cls: string): void {
 }
 
 /**
+ * Number headings in document order (`data-heading-index`). Lets the editor
+ * map a preview heading click to a TOC entry offset — no slug matching.
+ */
+export function indexHeadings() {
+  return (tree: HtmlRoot): void => {
+    let n = 0;
+    visit(tree, 'element', (node: Element) => {
+      if (!/^h[1-6]$/.test(node.tagName)) return;
+      node.properties = { ...(node.properties ?? {}), dataHeadingIndex: n++ };
+    });
+  };
+}
+/**
  * GitHub-style color swatches: `` `#RRGGBB` `` / `` `rgb(..)` `` / `` `hsl(..)` ``
  * get a dot. The span carries no color itself (sanitizer-safe) — the web
  * PreviewView paints it from the sibling code text via DOM.

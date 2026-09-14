@@ -16,6 +16,13 @@ describe('task checkbox indexing (2.4)', () => {
     const html = renderMarkdown('<input type="checkbox"> plain');
     expect(html).not.toContain('data-task-index');
   });
+
+  it('indexes checkboxes in loose list items (li > p > input)', () => {
+    const html = renderMarkdown('- [ ] a\n\n- [x] b');
+    expect(html).toContain('data-task-index="0"');
+    expect(html).toContain('data-task-index="1"');
+    expect(html).not.toContain('disabled');
+  });
 });
 
 describe('setTaskChecked', () => {
@@ -44,6 +51,12 @@ describe('heading anchors (2.3)', () => {
   it('adds slug ids to headings (user-content- prefix, GitHub-style)', () => {
     const html = renderMarkdown('# Hello World\n\n## Hello World');
     expect(html).toContain('id="user-content-hello-world"');
+  });
+
+  it('numbers headings in document order', () => {
+    const html = renderMarkdown('# A\n\ntext\n\n### B');
+    expect(html).toContain('data-heading-index="0"');
+    expect(html).toContain('data-heading-index="1"');
   });
 });
 
