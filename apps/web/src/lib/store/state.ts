@@ -187,6 +187,8 @@ export interface LibraryActions {
 export interface SyncActions {
   exportMirror: () => Promise<void>;
   importMirror: () => Promise<void>;
+  /** Silent disk→store import for the file watcher (notice only on change). */
+  refreshFromDisk: () => Promise<void>;
   refreshSyncState: () => Promise<void>;
   syncNow: () => Promise<void>;
 }
@@ -787,9 +789,38 @@ export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter
         }
       },
 
-      /** Refresh sync state from git status. */
-      refreshSyncState: async () => {
+      /**
+       * Watcher-driven disk→store import. Skips mid-sync and during an
+       * unresolved conflict; stays silent when nothing changed (own
+       * exports re-import as no-ops). Never commits or pushes.
+       */
+      refreshFromDisk: async () => {
+        const { syncBusy, syncState } = get();
+        const { shouldRefreshFromDisk } = await import('../mirrorWatch');
+        if (!shouldRefreshFromDisk({ syncBusy, syncState })) return;
         try {
+          const { mirrorReadFiles, mirrorSync, mirrorRootPath } = await import('../mirror');
+          const { notes, notebooks } = get();
+          const files = await mirrorReadFiles();
+          const res = planImport(notes, notebooks, files);
+          if (res.created === 0 && res.updated === 0 && res.adoptions.length === 0 && res.errors.length === 0) return;
+          if (res.adoptions.length > 0) {
+            await mirrorSync(res.adoptions.map((a) => ({ path: a.path, content: a.content })), []);
+          }
+          const errs = res.errors.length > 0 ? `, ${res.errors.length} skipped (${res.errors[0]?.message})` : '';
+          set({
+            notes: res.notes,
+            notebooks: res.notebooks,
+            mirrorDir: await mirrorRootPath(),
+            notice: `Mirror changed on disk: ${res.created} new, ${res.updated} updated${errs}`,
+          });
+        } catch (e) {
+          fail(e);
+        }
+      },
+
+      /** Refresh sync state from git status. */
+      refreshSyncState: async () => {        try {
           const { gitAvailable, gitStatusRaw, gitGetRemote, gitDeviceName } = await import('../sync');
           const hasGit = await gitAvailable();
           if (!hasGit) { set({ syncState: 'no-git' }); return; }

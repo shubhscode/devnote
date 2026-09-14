@@ -5,6 +5,7 @@
 mod mirror;
 mod git;
 mod backup;
+mod watch;
 
 fn main() {
     tauri::Builder::default()
@@ -45,6 +46,7 @@ fn main() {
             mirror::mirror_read,
             mirror::mirror_delete,
             mirror::mirror_sync,
+            watch::mirror_watch_start,
             git::git_available,
             git::git_status_raw,
             git::git_init,

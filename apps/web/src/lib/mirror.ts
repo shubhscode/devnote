@@ -40,3 +40,20 @@ export interface SyncWrite {
 export function mirrorSync(writes: SyncWrite[], deletes: string[]): Promise<void> {
   return invoke<void>('mirror_sync', { writes, deletes });
 }
+
+/**
+ * Start the native ~/devnote watcher (idempotent; desktop only).
+ * True when this call started it, false when already running.
+ */
+export function mirrorWatchStart(): Promise<boolean> {
+  return invoke<boolean>('mirror_watch_start');
+}
+
+/** Subscribe to native mirror change events. No-op off-desktop. */
+export async function onMirrorChanged(cb: () => void): Promise<() => void> {
+  if (!isTauri()) return () => {};
+  const { MIRROR_CHANGED_EVENT } = await import('./mirrorWatch');
+  const { listen } = await import('@tauri-apps/api/event');
+  const unlisten = await listen(MIRROR_CHANGED_EVENT, () => cb());
+  return unlisten;
+}

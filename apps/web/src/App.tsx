@@ -167,6 +167,31 @@ export default function App() {
   useEffect(() => {
     void api.getState().refreshSyncState();
   }, [api]);
+  // Mirror watcher: external disk changes (other editor, git pull elsewhere)
+  // re-import silently; never auto-commits. Desktop only.
+  useEffect(() => {
+    if (!inTauri) return;
+    let unlisten: (() => void) | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { mirrorWatchStart, onMirrorChanged } = await import('./lib/mirror');
+        const { WATCH_DEBOUNCE_MS } = await import('./lib/mirrorWatch');
+        await mirrorWatchStart();
+        if (cancelled) return;
+        unlisten = await onMirrorChanged(() => {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => { void api.getState().refreshFromDisk(); }, WATCH_DEBOUNCE_MS);
+        });
+      } catch { /* desktop-only; silent when unavailable */ }
+    })();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      unlisten?.();
+    };
+  }, [api, inTauri]);
   // Global error hooks: surface async failures as toasts instead of silent loss.
   useEffect(() => {
     const report = (message: string) => {
