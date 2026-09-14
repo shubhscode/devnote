@@ -52,3 +52,14 @@ test('note-list sort default applies and persists', async ({ page }) => {
   // Still title-sorted after reload.
   await expect(page.locator('.note-row-in').first()).toContainText('Roadmap');
 });
+
+test('sync tab validates the remote URL', async ({ page }) => {
+  await page.getByTitle('Preferences (mod+,)').click();
+  await page.getByText('Sync', { exact: true }).click();
+  await expect(page.getByText('Markdown file mirror')).toBeVisible();
+  const input = page.getByLabel('Sync remote URL');
+  await input.fill('not a remote');
+  await expect(page.getByText('Not a git remote')).toBeVisible();
+  await input.fill('git@github.com:user/devnote.git');
+  await expect(page.getByText('Not a git remote')).toHaveCount(0);
+});

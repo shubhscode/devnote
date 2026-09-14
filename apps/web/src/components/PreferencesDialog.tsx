@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CloseCircle, Edit, Keyboard, Palette, Refresh, Sliders } from 'reicon-react';
 import { BUNDLED_THEMES, notebookPath } from '@devnote/core';
 import type { Notebook, NoteSortKey } from '@devnote/core';
+import { isValidGitRemote } from '@devnote/sync';
 import { COMMAND_META } from '../lib/commands';
 import { modLabel } from '../lib/keys';
 import { useFocusTrap } from '../lib/focusTrap';
@@ -24,10 +25,11 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'general' | 'appearance' | 'editing' | 'shortcuts';
+type Tab = 'general' | 'sync' | 'appearance' | 'editing' | 'shortcuts';
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode; title: string }[] = [
-  { id: 'general', label: 'General', icon: <Sliders size={15} />, title: 'General settings (default notebook, mirror)' },
+  { id: 'general', label: 'General', icon: <Sliders size={15} />, title: 'General settings (default notebook)' },
+  { id: 'sync', label: 'Sync', icon: <Refresh size={15} />, title: 'File mirror, git sync, backup' },
   { id: 'appearance', label: 'Appearance', icon: <Palette size={15} />, title: 'Themes, dark/light, font size' },
   { id: 'editing', label: 'Editing', icon: <Edit size={15} />, title: 'Word wrap, toolbar, shortcuts' },
   { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard size={15} />, title: 'Keybindings reference' },
@@ -87,6 +89,18 @@ export default function PreferencesDialog(props: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef);
   const { settings } = props;
+
+  // Remote URL draft: editing stays local (no per-keystroke git invoke);
+  // commits on blur/Enter, reverts on Escape.
+  const [remoteDraft, setRemoteDraft] = useState<string | null>(null);
+  useEffect(() => { setRemoteDraft(null); }, [props.remoteUrl]);
+  const remoteShown = remoteDraft ?? props.remoteUrl ?? '';
+  const remoteValid = remoteShown.trim() === '' || isValidGitRemote(remoteShown);
+  const commitRemote = () => {
+    const next = remoteShown.trim();
+    if (remoteValid && next !== (props.remoteUrl ?? '')) props.onSetRemote(next);
+    setRemoteDraft(null);
+  };
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -155,7 +169,11 @@ export default function PreferencesDialog(props: Props) {
                     ))}
                   </select>
                 </Section>
+              </div>
+            )}
 
+            {tab === 'sync' && (
+              <div className="space-y-3">
                 <Section
                   title="Markdown file mirror"
                   desc={<>Every note as a <code>.md</code> file with frontmatter — local-first, git-ready. Desktop app only.</>}
@@ -184,11 +202,17 @@ export default function PreferencesDialog(props: Props) {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={props.remoteUrl ?? ''}
-                      onChange={(e) => props.onSetRemote(e.target.value)}
+                      value={remoteShown}
+                      onChange={(e) => setRemoteDraft(e.target.value)}
+                      onBlur={commitRemote}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                        else if (e.key === 'Escape') { e.stopPropagation(); setRemoteDraft(null); }
+                      }}
                       placeholder="Remote URL (e.g. git@github.com:user/devnote.git)"
                       aria-label="Sync remote URL"
-                      className="min-w-0 flex-1 rounded-lg bg-zinc-100 px-2 py-1.5 font-mono text-xs dark:bg-zinc-800"
+                      aria-invalid={!remoteValid}
+                      className={`min-w-0 flex-1 rounded-lg bg-zinc-100 px-2 py-1.5 font-mono text-xs outline-none dark:bg-zinc-800 ${!remoteValid ? 'ring-1 ring-red-500' : ''}`}
                     />
                     <button
                       className={BTN_SECONDARY}
@@ -198,6 +222,14 @@ export default function PreferencesDialog(props: Props) {
                       <Refresh size={13} className={props.syncBusy ? 'inline animate-spin' : 'inline'} /> Sync now
                     </button>
                   </div>
+                  <p className="mt-1.5 text-xs opacity-60">
+                    HTTPS (<code>https://host/user/repo.git</code>) or SSH (<code>git@host:user/repo.git</code>). The repo must exist and stay private.
+                  </p>
+                  {!remoteValid && (
+                    <p role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      Not a git remote — use an https:// URL or git@host:path form.
+                    </p>
+                  )}
                 </Section>
 
                 <Section
