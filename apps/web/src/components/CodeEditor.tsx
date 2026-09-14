@@ -14,6 +14,8 @@ interface Props {
   wrap: boolean;
   onDocChange: (doc: string) => void;
   viewRef: MutableRefObject<EditorView | null>;
+  /** Pasted/dropped image files (saved to .attachments by the host). */
+  onFiles?: (files: File[]) => void;
   /** Fired once the view is mounted (lets parents attach listeners). */
   onReady?: () => void;
   /** Fired when the selection moves (bubble menu positioning). */
@@ -32,6 +34,8 @@ export default function CodeEditor(props: Props) {
   cbRef.current = props.onDocChange;
   const selRef = useRef(props.onSelectionChange);
   selRef.current = props.onSelectionChange;
+  const filesRef = useRef(props.onFiles);
+  filesRef.current = props.onFiles;
   const keyRef = useRef(props.docKey);
   const prefsRef = useRef({ dark: props.dark, fontSize: props.fontSize, wrap: props.wrap });
   prefsRef.current = { dark: props.dark, fontSize: props.fontSize, wrap: props.wrap };
@@ -47,6 +51,7 @@ export default function CodeEditor(props: Props) {
       wrap: p.wrap,
       onDocChange: (d) => cbRef.current(d),
       onSelection: () => selRef.current?.(),
+      onFiles: (f) => filesRef.current?.(f),
     });
     keyRef.current = props.docKey;
     handleRef.current = handle;
@@ -69,7 +74,7 @@ export default function CodeEditor(props: Props) {
     keyRef.current = props.docKey;
     const p = prefsRef.current;
     handle.view.setState(
-      createEditorState(props.initialDoc, p.dark, { fontSize: p.fontSize, wrap: p.wrap }),
+      createEditorState(props.initialDoc, p.dark, { fontSize: p.fontSize, wrap: p.wrap }, { onFiles: (f) => filesRef.current?.(f) }),
     );
   }, [props.docKey, props.initialDoc]);
 

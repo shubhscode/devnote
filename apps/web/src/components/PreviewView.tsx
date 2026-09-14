@@ -74,6 +74,44 @@ export default function PreviewView(props: Props) {
     }
   }, [html]);
 
+  // Attachments: resolve `.attachments/…` refs to blob URLs from desktop
+  // bytes (sanitizer keeps the relative src; blob is set post-sanitize).
+  // Cached per src so keystrokes don't re-read disk; revoked on unmount.
+  const blobCache = useRef(new Map<string, string>());
+  useEffect(() => {
+    const root = hostRef.current;
+    if (!root) return;
+    let cancelled = false;
+    void (async () => {
+      const { isAttachmentRef, attachmentExt } = await import('@devnote/core');
+      const { loadAttachmentBytes } = await import('../lib/attachments');
+      for (const img of root.querySelectorAll('img')) {
+        const src = img.getAttribute('src') ?? '';
+        if (!isAttachmentRef(src) || img.dataset.resolved === '1') continue;
+        try {
+          let url = blobCache.current.get(src);
+          if (!url) {
+            const bytes = await loadAttachmentBytes(src);
+            if (cancelled) return;
+            const ext = attachmentExt(src);
+            url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: `image/${ext === 'jpg' ? 'jpeg' : ext}` }));
+            blobCache.current.set(src, url);
+          }
+          img.src = url;
+          img.dataset.resolved = '1';
+        } catch { /* desktop-only bytes — alt text stays as the fallback */ }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [html]);
+  useEffect(() => {
+    const cache = blobCache.current;
+    return () => {
+      for (const url of cache.values()) URL.revokeObjectURL(url);
+      cache.clear();
+    };
+  }, []);
+
   // Delegated clicks on sanitized output: task checkboxes + heading anchors.
   useEffect(() => {
     const root = hostRef.current;

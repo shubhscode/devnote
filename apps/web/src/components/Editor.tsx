@@ -57,6 +57,7 @@ export default function Editor(props: EditorProps) {
   const trashNote = useDevnote((s) => s.trash);
   const themeId = useDevnote((s) => s.settings.theme);
   const openNoteById = useDevnote((s) => s.openNote);
+  const addAttachment = useDevnote((s) => s.addAttachment);
   const patchNotice = useDevnote((s) => s.patch);
   const notesForTags = useDevnote((s) => s.notes);
   const tagSuggestions = useMemo(
@@ -90,6 +91,8 @@ export default function Editor(props: EditorProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const viewRef = props.viewRef;
+  /** Placeholder disambiguator for concurrent attachment uploads. */
+  const attachSeq = useRef(0);
 
   // Clear the tag draft when switching notes (local-only state).
   const lastNoteId = useRef(note?.id);
@@ -168,6 +171,35 @@ export default function Editor(props: EditorProps) {
 
   const toggleTask = (index: number, checked: boolean) => {
     commitBodyExternal(note.id, setTaskChecked(note.body, index, checked));
+  };
+
+  /**
+   * Pasted/dropped images: insert an `Uploading…` placeholder at the cursor
+   * synchronously (keeps position + undo), save bytes, then swap in the
+   * `.attachments/` ref. Failures remove the placeholder (store set the notice).
+   */
+  const handleFiles = async (noteId: string, files: File[]) => {
+    const v = viewRef.current;
+    if (!v) return;
+    for (const file of files) {
+      const placeholder = `![Uploading ${file.name} #${attachSeq.current++}]()`;
+      const pos = v.state.selection.main.head;
+      v.dispatch({ changes: { from: pos, to: pos, insert: placeholder } });
+      const swap = (replacement: string) => {
+        const cur = v.state.doc.toString();
+        const at = cur.indexOf(placeholder);
+        if (at >= 0) v.dispatch({ changes: { from: at, to: at + placeholder.length, insert: replacement } });
+      };
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const path = await addAttachment(noteId, file.name, file.type, bytes);
+        if (path === null) { swap(''); continue; }
+        const { attachmentAlt } = await import('@devnote/core');
+        swap(`![${attachmentAlt(path)}](${path})`);
+      } catch {
+        swap('');
+      }
+    }
   };
 
   const jumpToHeading = (headingIndex: number) => {
@@ -439,6 +471,7 @@ export default function Editor(props: EditorProps) {
               viewRef={viewRef}
               onReady={() => setViewTick((t) => t + 1)}
               onSelectionChange={() => setViewTick((t) => t + 1)}
+              onFiles={(files) => { void handleFiles(note.id, files); }}
             />
             </div>
             <EditorBubbleMenu

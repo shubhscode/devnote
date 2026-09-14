@@ -235,14 +235,23 @@ export function markdownLinter(): Extension {
 }
 
 /**
- * Paste handler: URL over selection → link; rich HTML → Markdown;
- * otherwise false (CodeMirror pastes plain).
+ * Paste handler: image files → onFiles; URL over selection → link;
+ * rich HTML → Markdown; otherwise false (CodeMirror pastes plain).
  */
-function pasteHandler(): Extension {
+function pasteHandler(onFiles?: (files: File[]) => void): Extension {
   return EditorView.domEventHandlers({
     paste(event, view) {
       const dt = event.clipboardData;
       if (!dt) return false;
+      if (dt.files.length > 0) {
+        const images = Array.from(dt.files).filter((f) => f.type.startsWith('image/'));
+        if (images.length > 0 && onFiles) {
+          event.preventDefault();
+          onFiles(images);
+          return true;
+        }
+        return false;
+      }
       const text = dt.getData('text/plain');
       const html = dt.getData('text/html');
       const sel = view.state.selection.main;
@@ -265,6 +274,17 @@ function pasteHandler(): Extension {
         return true;
       }
       return false;
+    },
+    drop(event, view) {
+      const dt = event.dataTransfer;
+      if (!dt || dt.files.length === 0) return false;
+      const images = Array.from(dt.files).filter((f) => f.type.startsWith('image/'));
+      if (images.length === 0 || !onFiles) return false;
+      event.preventDefault();
+      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+      if (pos !== null) view.dispatch({ selection: { anchor: pos } });
+      onFiles(images);
+      return true;
     },
   });
 }
@@ -488,7 +508,12 @@ export interface EditorPrefs {
   wrap: boolean;
 }
 
-export function createEditorState(doc: string, dark: boolean, prefs?: Partial<EditorPrefs>): EditorState {
+export function createEditorState(
+  doc: string,
+  dark: boolean,
+  prefs?: Partial<EditorPrefs>,
+  opts?: { onFiles?: (files: File[]) => void },
+): EditorState {
   const fontSize = prefs?.fontSize ?? 13.5;
   const wrap = prefs?.wrap ?? true;
   return EditorState.create({
@@ -509,7 +534,7 @@ export function createEditorState(doc: string, dark: boolean, prefs?: Partial<Ed
       slashCommands(),
       search({ top: true }),
       markdownLinter(),
-      pasteHandler(),
+      pasteHandler(opts?.onFiles),
       themeCompartment.of(buildTheme(dark, fontSize)),
     ],
   });
@@ -524,6 +549,8 @@ export interface MountOptions {
   onDocChange: (doc: string) => void;
   /** Fired when the selection moves (incl. cursor motion without edits). */
   onSelection?: (from: number, to: number) => void;
+  /** Pasted/dropped image files (attachments live in the host app). */
+  onFiles?: (files: File[]) => void;
 }
 
 /** Mount an EditorView; returns view + prefs reconfig helper. */
@@ -542,7 +569,7 @@ export function mountEditor(opts: MountOptions): {
   let lastSel = { from: -1, to: -1 };
   const view = new EditorView({
     parent: opts.parent,
-    state: createEditorState(opts.doc, opts.dark, { fontSize: opts.fontSize, wrap: opts.wrap }),
+    state: createEditorState(opts.doc, opts.dark, { fontSize: opts.fontSize, wrap: opts.wrap }, { onFiles: opts.onFiles }),
     dispatchTransactions: (trs, view) => {
       view.update(trs);
       const sel = view.state.selection.main;
