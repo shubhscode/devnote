@@ -499,35 +499,12 @@ export default function App() {
       {sidebarOpen && !focusMode && (
         <ErrorBoundary name="sidebar">
         <Sidebar
-          tree={sidebarTree}
-          notebooks={store.notebooks}
-          counts={store.counts}
-          trashedCount={store.trashedCount}
-          statusCounts={statusCounts}
-          tagCounts={tagCounts}
-          allTags={tagCounts.map((t) => t.tag)}
-          selection={store.selection}
-          expanded={store.expanded}
-          workspacePath={workspacePath}
-          onSelect={store.select}
-          onToggleExpand={store.toggleExpand}
-          onAddNotebook={store.addNotebook}
-          onRenameNotebook={store.rename}
           onDeleteNotebook={(id) => {
             const nb = store.notebooks.find((n) => n.id === id);
             if (nb) setNotebookDelete({ id: nb.id, name: nb.name });
           }}
-          onRenameTag={store.renameTag}
-          onMergeTags={store.mergeTags}
           onDeleteTag={(name) => setTagDelete(name)}
-          onReorderNotebook={store.reorderNotebook}
-          onPickQuery={pickQuery}
           onOpenPreferences={() => setPrefsOpen(true)}
-          onFocusNotebook={store.focusWorkspace}
-          onExitWorkspace={store.clearWorkspace}
-          syncState={store.syncState}
-          syncBusy={store.syncBusy}
-          onSyncNow={store.syncNow}
         />
         </ErrorBoundary>
       )}
