@@ -8,16 +8,18 @@ type AttrList = Exclude<Schema['attributes'], undefined>[string];
 const EXTRA_ATTRS: Record<string, string[]> = {
   '*': ['className'],
   a: ['className'],
-  h1: ['className'],
-  h2: ['className'],
-  h3: ['className'],
-  h4: ['className'],
-  h5: ['className'],
-  h6: ['className'],
+  h1: ['className', 'id'],
+  h2: ['className', 'id'],
+  h3: ['className', 'id'],
+  h4: ['className', 'id'],
+  h5: ['className', 'id'],
+  h6: ['className', 'id'],
   ul: ['className'],
   ol: ['className'],
   section: ['className'],
-  input: ['className'],
+  // Task round-trip (2.4): type/checked survive, disabled is stripped by the
+  // indexer plugin, dataTaskIndex survives for the click handler.
+  input: ['className', 'type', 'checked', 'dataTaskIndex'],
 };
 
 function mergeAttrs(
@@ -35,4 +37,8 @@ export const previewSchema: Schema = {
   ...defaultSchema,
   tagNames: [...(defaultSchema.tagNames ?? []), 'section'],
   attributes: mergeAttrs(defaultSchema.attributes, EXTRA_ATTRS),
+  // Deviate from GitHub here: upstream forces `disabled` on every input
+  // (`required.input`). Our task checkboxes are click targets wired to our
+  // own round-trip handler (no <form> exists), so enabled inputs are safe.
+  required: {},
 };
