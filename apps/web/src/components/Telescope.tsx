@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Hashtag, Moon, Notebook as NotebookIcon, Sun } from 'reicon-react';
-import { BUNDLED_THEMES, fuzzyFilter } from '@devnote/core';
-import type { TocEntry } from '@devnote/editor';
+import { BUNDLED_THEMES, countDirectNotes, fuzzyFilter, notebookPath } from '@devnote/core';
+import { extractToc } from '@devnote/editor';
 import { TELESCOPE_SCOPES as SCOPES, parseTelescopeQuery, scopePrefix, type TelescopeScope } from '../lib/telescope';
+import { tagCountsFor, useDevnote, workspaceScopeIdsFor } from '../lib/store';
 
 export interface TelescopeCommand {
   id: string;
@@ -33,10 +34,6 @@ type Scope = TelescopeScope;
 
 interface Props {
   commands: TelescopeCommand[];
-  notebooks: TelescopeNotebook[];
-  tags: TelescopeTag[];
-  toc: TocEntry[];
-  hasActiveNote: boolean;
   onAction: (a: TelescopeAction) => void;
   onClose: () => void;
 }
@@ -88,28 +85,46 @@ export default function Telescope(props: Props) {
   // letter prefixes need a space so `budget` still searches everything).
   const { scope, rest } = useMemo(() => parseTelescopeQuery(query), [query]);
 
+  // Self-subscribed (Track 1.1): the palette reads fresh data on open without
+  // subscribing its parent to per-keystroke note changes.
+  const notebooks = useDevnote((s) => s.notebooks);
+  const notes = useDevnote((s) => s.notes);
+  const workspaceId = useDevnote((s) => s.workspaceId);
+  const activeBody = useDevnote((s) => s.notes.find((n) => n.id === s.activeNoteId)?.body ?? '');
+  const hasActiveNote = useDevnote((s) => s.activeNoteId !== null);
+  const nbList = useMemo(() => {
+    const counts = countDirectNotes(notes);
+    return notebooks.map((n) => ({ id: n.id, path: notebookPath(notebooks, n.id), count: counts.get(n.id) ?? 0 }));
+  }, [notebooks, notes]);
+  const tagList = useMemo(() => {
+    const scopeIds = workspaceScopeIdsFor(notebooks, workspaceId);
+    const scoped = scopeIds === null ? notes : notes.filter((n) => scopeIds.includes(n.notebookId));
+    return tagCountsFor(scoped);
+  }, [notes, notebooks, workspaceId]);
+  const toc = useMemo(() => extractToc(activeBody), [activeBody]);
+
   const rows: Row[] = useMemo(() => {
     const cmdRows: Row[] = fuzzyFilter(rest, props.commands, (c) => c.title).map(({ item, hit }) => ({
       key: `cmd-${item.id}`, group: 'Commands', label: item.title, hint: item.hint,
       indices: hit.indices, action: { type: 'command', id: item.id } as TelescopeAction,
     }));
-    const nbRows: Row[] = fuzzyFilter(rest, props.notebooks, (n) => n.path).map(({ item, hit }) => ({
+    const nbRows: Row[] = fuzzyFilter(rest, nbList, (n) => n.path).map(({ item, hit }) => ({
       key: `nb-${item.id}`, group: 'Notebooks', label: item.path, sub: `${item.count} notes`,
       indices: hit.indices,
       action: { type: 'notebook', id: item.id, how: 'open' } as TelescopeAction,
-      altAction: props.hasActiveNote ? ({ type: 'notebook', id: item.id, how: 'move' } as TelescopeAction) : undefined,
-      altHint: props.hasActiveNote ? '⇧↵ move note' : undefined,
+      altAction: hasActiveNote ? ({ type: 'notebook', id: item.id, how: 'move' } as TelescopeAction) : undefined,
+      altHint: hasActiveNote ? '⇧↵ move note' : undefined,
       modAction: { type: 'notebook', id: item.id, how: 'focus' } as TelescopeAction,
       modHint: '⌘↵ workspace',
     }));
-    const tagRows: Row[] = fuzzyFilter(rest, props.tags, (t) => t.tag).map(({ item, hit }) => ({
+    const tagRows: Row[] = fuzzyFilter(rest, tagList, (t) => t.tag).map(({ item, hit }) => ({
       key: `tag-${item.tag}`, group: 'Tags', label: `#${item.tag}`, sub: `${item.count} notes`,
       indices: hit.indices,
       action: { type: 'tag', tag: item.tag, how: 'filter' } as TelescopeAction,
-      altAction: props.hasActiveNote ? ({ type: 'tag', tag: item.tag, how: 'add' } as TelescopeAction) : undefined,
-      altHint: props.hasActiveNote ? '⇧↵ add to note' : undefined,
+      altAction: hasActiveNote ? ({ type: 'tag', tag: item.tag, how: 'add' } as TelescopeAction) : undefined,
+      altHint: hasActiveNote ? '⇧↵ add to note' : undefined,
     }));
-    const tocRows: Row[] = fuzzyFilter(rest, props.toc, (t) => t.text).map(({ item, hit }) => ({
+    const tocRows: Row[] = fuzzyFilter(rest, toc, (t) => t.text).map(({ item, hit }) => ({
       key: `toc-${item.pos}`, group: 'Contents',
       label: `${item.kind === 'heading' ? `${'#'.repeat(item.level ?? 1)} ` : item.checked ? '☑ ' : '☐ '}${item.text}`,
       indices: hit.indices, action: { type: 'toc', pos: item.pos } as TelescopeAction,

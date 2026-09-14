@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { CloseCircle, History } from 'reicon-react';
 import { revisionsForNote } from '@devnote/core';
 import type { Revision } from '@devnote/core';
+import { useDevnote } from '../lib/store';
 
 interface Props {
-  noteTitle: string;
   noteId: string;
   revisions: Revision[];
   onRestore: (noteId: string, revisionId: string) => void;
@@ -23,6 +23,7 @@ function ago(iso: string): string {
 /** Note revision history: browse snapshots, restore any version. */
 export default function RevisionHistoryDialog(props: Props) {
   const list = revisionsForNote(props.revisions, props.noteId);
+  const noteTitle = useDevnote((s) => s.notes.find((n) => n.id === props.noteId)?.title ?? '');
   const [selectedId, setSelectedId] = useState<string | null>(list[0]?.id ?? null);
 
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function RevisionHistoryDialog(props: Props) {
       >
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2.5">
           <h2 className="truncate text-sm font-semibold">
-            History — {props.noteTitle === '' ? 'Untitled' : props.noteTitle}
+            History — {noteTitle === '' ? 'Untitled' : noteTitle}
           </h2>
           <button className="rounded p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800" onClick={props.onClose} title="Close (Esc)">
             <CloseCircle size={16} />

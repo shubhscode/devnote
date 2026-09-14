@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'reicon-react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
-import { EditorView, extractToc } from '@devnote/editor';
-import { BUNDLED_THEMES, THEME_VAR_KEYS, descendantIds, getTheme, notebookPath, resolveIsDark } from '@devnote/core';
-import type { NoteStatus, TreeNode } from '@devnote/core';
-import { useDevnoteStore } from './lib/store';
+import { EditorView } from '@devnote/editor';
+import { BUNDLED_THEMES, BUILTIN_TEMPLATES, THEME_VAR_KEYS, getTheme, resolveIsDark } from '@devnote/core';
+import { getDevnoteStore, useDevnote, workspaceScopeIdsFor } from './lib/store';
 import { COMMAND_META } from './lib/commands';
 import { APP_VERSION, UPDATE_OWNER, UPDATE_REPO } from './lib/version';
 import { checkForUpdates, shouldRecheck, type ReleaseInfo } from './lib/updates';
@@ -26,7 +25,44 @@ import TemplatePicker from './components/TemplatePicker';
 // (Outline default, Filled for selected/active). Theme: light/dark/system via `dark` class.
 
 export default function App() {
-  const store = useDevnoteStore();
+  // Cold-only subscriptions (Track 1.1): nothing here changes per keystroke,
+  // so typing re-renders the active pane — never this shell. Hot data lives
+  // in the panes/dialogs via useDevnote; fire-and-forget reads use the api.
+  const api = getDevnoteStore();
+  const themeId = useDevnote((s) => s.settings.theme);
+  const notice = useDevnote((s) => s.notice);
+  const selection = useDevnote((s) => s.selection);
+  const notebooks = useDevnote((s) => s.notebooks);
+  const workspaceId = useDevnote((s) => s.workspaceId);
+  const activeNoteId = useDevnote((s) => s.activeNoteId);
+  const syncState = useDevnote((s) => s.syncState);
+  const updateSettings = useDevnote((s) => s.updateSettings);
+  const select = useDevnote((s) => s.select);
+  const dismissNotice = useDevnote((s) => s.patch);
+  const syncNow = useDevnote((s) => s.syncNow);
+  const restoreNotes = useDevnote((s) => s.restore);
+  const moveNotesTo = useDevnote((s) => s.moveNotesTo);
+  const destroyNotes = useDevnote((s) => s.destroy);
+  const removeNotebook = useDevnote((s) => s.removeNotebook);
+  const deleteTag = useDevnote((s) => s.deleteTag);
+  const restoreRevision = useDevnote((s) => s.restoreRevision);
+  const exportMirror = useDevnote((s) => s.exportMirror);
+  const importMirror = useDevnote((s) => s.importMirror);
+  const refreshSyncState = useDevnote((s) => s.refreshSyncState);
+  const createTemplate = useDevnote((s) => s.createTemplate);
+  const updateTemplate = useDevnote((s) => s.updateTemplate);
+  const deleteTemplate = useDevnote((s) => s.deleteTemplate);
+  const duplicateTemplate = useDevnote((s) => s.duplicateTemplate);
+  const applyTemplateToNote = useDevnote((s) => s.applyTemplateToNote);
+  // Cold slices for dialogs (templates, revisions, prefs) — none changes per keystroke.
+  const customTemplates = useDevnote((s) => s.customTemplates);
+  const allTemplates = useMemo(() => [...customTemplates, ...BUILTIN_TEMPLATES], [customTemplates]);
+  const templateRecents = useDevnote((s) => s.templateRecents);
+  const revisions = useDevnote((s) => s.revisions);
+  const settings = useDevnote((s) => s.settings);
+  const mirrorDir = useDevnote((s) => s.mirrorDir);
+  const remoteUrl = useDevnote((s) => s.remoteUrl);
+  const syncBusy = useDevnote((s) => s.syncBusy);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [focusMode, setFocusMode] = useState(false); // distraction-free: editor only
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -63,7 +99,7 @@ export default function App() {
     return () => mq.removeEventListener('change', h);
   }, []);
 
-  const theme = getTheme(BUNDLED_THEMES, store.settings.theme);
+  const theme = getTheme(BUNDLED_THEMES, themeId);
   const dark = resolveIsDark(theme.id, systemDark, BUNDLED_THEMES);
   useEffect(() => {
     const root = document.documentElement;
@@ -87,41 +123,42 @@ export default function App() {
   }, [inTauri]);
 
   const toggleTheme = () => {
-    store.updateSettings({ theme: dark ? 'light' : 'dark' });
+    updateSettings({ theme: dark ? 'light' : 'dark' });
   };
 
   useEffect(() => {
-    if (!store.notice) return;
-    const t = setTimeout(() => store.setNotice(null), 6000);
+    if (!notice) return;
+    const t = setTimeout(() => dismissNotice({ notice: null }), 6000);
     return () => clearTimeout(t);
-  }, [store.notice]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [notice, dismissNotice]);
 
   // Reset selection if its notebook was deleted.
   useEffect(() => {
-    if (store.selection.kind === 'notebook') {
-      const id = store.selection.id;
-      if (!store.notebooks.some((n) => n.id === id)) store.select({ kind: 'all' });
+    if (selection.kind === 'notebook') {
+      const id = selection.id;
+      if (!notebooks.some((n) => n.id === id)) select({ kind: 'all' });
     }
-  }, [store.notebooks]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [notebooks, selection, select]);
 
-  // Global shortcuts + idle snapshots — single binding via ref to latest store (AGENTS.md §5).
-  const ref = useRef(store);
-  ref.current = store;
-  // Fresh modal flags for the mount-once key handler below.
+  // Global shortcuts + idle snapshots — stable actions, fresh state via api (AGENTS.md §5).  // Fresh modal flags for the mount-once key handler below.
   const uiRef = useRef({ templatePickerOpen, telescopeOpen, historyNoteId, prefsOpen, restoreIds, moveIds, destroyIds, notebookDelete, tagDelete, updateOpen: update !== null });
   uiRef.current = { templatePickerOpen, telescopeOpen, historyNoteId, prefsOpen, restoreIds, moveIds, destroyIds, notebookDelete, tagDelete, updateOpen: update !== null };
   // Idle revision snapshots (30s quiet) — cheap dirty-check inside.
   useEffect(() => {
-    const t = setInterval(() => ref.current.snapshotIdle(), 10_000);
+    const t = setInterval(() => api.getState().snapshotIdle(), 10_000);
     return () => clearInterval(t);
-  }, []);
+  }, [api]);
+  // Initialize sync state on mount (mirror/git are desktop-only; silent in browser).
+  useEffect(() => {
+    void api.getState().refreshSyncState();
+  }, [api]);
   // Global error hooks: surface async failures as toasts instead of silent loss.
   useEffect(() => {
     const report = (message: string) => {
       try {
         localStorage.setItem('devnote:last-error', `${new Date().toISOString()} ${message.slice(0, 500)}`);
       } catch { /* ignore */ }
-      ref.current.setNotice(`Error: ${message.slice(0, 160)}`);
+      api.getState().patch({ notice: `Error: ${message.slice(0, 160)}` });
     };
     const onError = (e: ErrorEvent) => {
       if (e.message) report(e.message);
@@ -157,7 +194,7 @@ export default function App() {
     const h = (e: KeyboardEvent) => {
       // CodeMirror consumes its own keys (mod+B/I/…): never double-handle.
       if (e.defaultPrevented) return;
-      const s = ref.current;
+      const s = api.getState();
       const typing = isTypingTarget(e.target);
       const mod = isMod(e);
 
@@ -244,18 +281,88 @@ export default function App() {
         return;
       }
       if (e.key === 'Escape' && !typing) {
-        s.setQuery('');
+        s.patch({ query: '' });
       }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, []);
+  }, [api]);
 
-  const toc = useMemo(
-    () => extractToc(store.activeNote?.body ?? ''),
+  const focusSearch = () => {
+    if (selection.kind !== 'all') select({ kind: 'all' });
+    document.getElementById('note-search')?.focus();
+  };
+
+  const commands = useMemo(() => {
+    // Runs read fresh state lazily — this memo only recomputes on cold changes.
+    const ids = (): string[] => {
+      const s = api.getState();
+      if (s.selectedIds.length > 0) return s.selectedIds;
+      return s.activeNoteId !== null ? [s.activeNoteId] : [];
+    };
+    const runs: Record<string, () => void> = {
+      'core:new-note': () => api.getState().newNote(),
+      'core:new-notebook': () => {
+        const s = api.getState();
+        s.addNotebook(s.selection.kind === 'notebook' ? s.selection.id : null);
+      },
+      'core:choose-template': () => setTemplatePickerOpen(true),
+      'core:toggle-telescope': () => setTelescopeOpen((v) => !v),
+      'core:toggle-preview': () => setViewMode((m) => (m === 'preview' ? 'edit' : 'preview')),
+      'core:toggle-side-by-side': () => setViewMode((m) => (m === 'split' ? 'edit' : 'split')),
+      'core:distraction-free': () => setFocusMode((v) => !v),
+      'core:toggle-sidebar': () => setSidebarOpen((v) => !v),
+      'core:focus-workspace': () => api.getState().toggleWorkspace(),
+      'core:exit-workspace': () => api.getState().clearWorkspace(),
+      'core:toggle-theme': () => toggleTheme(),
+      'core:open-preferences': () => setPrefsOpen(true),
+      'core:navigate-back': () => api.getState().goBack(),
+      'core:navigate-forward': () => api.getState().goForward(),
+      'core:find': () => focusSearch(),
+      'core:find-global': () => {
+        const s = api.getState();
+        if (s.selection.kind !== 'all') s.select({ kind: 'all' });
+        s.patch({ scope: 'global' });
+        document.getElementById('note-search')?.focus();
+      },
+      'core:toggle-search-scope': () => api.getState().toggleScope(),
+      'core:toggle-pin': () => {
+        const s = api.getState();
+        const cur = s.notes.find((n) => n.id === s.activeNoteId) ?? null;
+        if (cur) s.commitPatch(cur.id, { pinned: !cur.pinned });
+      },
+      'core:show-history': () => {
+        const id = api.getState().activeNoteId;
+        if (id !== null) setHistoryNoteId(id);
+      },
+      'core:duplicate-note': () => { const list = ids(); if (list.length > 0) api.getState().duplicate(list); },
+      'core:trash-note': () => { const list = ids(); if (list.length > 0) api.getState().trash(list); },
+      'core:sync-now': () => void api.getState().syncNow(),
+      'core:export-mirror': () => void api.getState().exportMirror(),
+      'core:import-mirror': () => void api.getState().importMirror(),
+      'core:check-for-updates': () => void (async () => {
+        const rel = await checkForUpdates(APP_VERSION, UPDATE_OWNER, UPDATE_REPO);
+        try { localStorage.setItem('devnote:last-update-check', String(Date.now())); } catch { /* ignore */ }
+        if (rel) setUpdate(rel);
+        else api.getState().patch({ notice: `You're up to date (v${APP_VERSION})` });
+      })(),
+    };
+    // Telescope never lists its own toggle, hides note ops without an active
+    // note, and hides exit-workspace outside a workspace (no dead no-ops).
+    const NOTE_COMMANDS = new Set(['core:show-history', 'core:duplicate-note', 'core:trash-note', 'core:toggle-pin']);
+    return COMMAND_META.filter((m) => {
+      if (m.id === 'core:toggle-telescope') return false;
+      if (m.id === 'core:exit-workspace' && workspaceId === null) return false;
+      if (activeNoteId === null && NOTE_COMMANDS.has(m.id)) return false;
+      return true;
+    }).map((m) => ({
+      id: m.id,
+      title: m.title,
+      hint: m.binding?.replace('mod', modLabel()),
+      run: runs[m.id] ?? (() => undefined),
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [store.activeNote?.body],
-  );
+  }, [selection, workspaceId, activeNoteId]);
 
   const jumpToPos = (pos: number) => {
     const v = editorViewRef.current;
@@ -287,68 +394,8 @@ export default function App() {
     v.focus();
   });
 
-  const focusSearch = () => {
-    if (store.selection.kind !== 'all') store.select({ kind: 'all' });
-    document.getElementById('note-search')?.focus();
-  };
-
-  const commands = useMemo(() => {
-    const s = store;
-    const ids = (): string[] => {
-      if (s.selectedIds.length > 0) return s.selectedIds;
-      return s.activeNoteId !== null ? [s.activeNoteId] : [];
-    };
-    const runs: Record<string, () => void> = {
-      'core:new-note': () => s.newNote(),
-      'core:new-notebook': () => s.addNotebook(s.selection.kind === 'notebook' ? s.selection.id : null),
-      'core:choose-template': () => setTemplatePickerOpen(true),
-      'core:toggle-telescope': () => setTelescopeOpen((v) => !v),
-      'core:toggle-preview': () => setViewMode((m) => (m === 'preview' ? 'edit' : 'preview')),
-      'core:toggle-side-by-side': () => setViewMode((m) => (m === 'split' ? 'edit' : 'split')),
-      'core:distraction-free': () => setFocusMode((v) => !v),
-      'core:toggle-sidebar': () => setSidebarOpen((v) => !v),
-      'core:focus-workspace': () => s.toggleWorkspace(),
-      'core:exit-workspace': () => s.clearWorkspace(),
-      'core:toggle-theme': () => toggleTheme(),
-      'core:open-preferences': () => setPrefsOpen(true),
-      'core:navigate-back': () => s.goBack(),
-      'core:navigate-forward': () => s.goForward(),
-      'core:find': () => focusSearch(),
-      'core:find-global': () => { if (s.selection.kind !== 'all') s.select({ kind: 'all' }); s.setScope('global'); document.getElementById('note-search')?.focus(); },
-      'core:toggle-search-scope': () => s.toggleScope(),
-      'core:toggle-pin': () => { const cur = s.activeNote; if (cur) s.commitPatch(cur.id, { pinned: !cur.pinned }); },
-      'core:show-history': () => { if (s.activeNoteId !== null) setHistoryNoteId(s.activeNoteId); },
-      'core:duplicate-note': () => { const list = ids(); if (list.length > 0) s.duplicate(list); },
-      'core:trash-note': () => { const list = ids(); if (list.length > 0) s.trash(list); },
-      'core:sync-now': () => void s.syncNow(),
-      'core:export-mirror': () => void s.exportMirror(),
-      'core:import-mirror': () => void s.importMirror(),
-      'core:check-for-updates': () => void (async () => {
-        const rel = await checkForUpdates(APP_VERSION, UPDATE_OWNER, UPDATE_REPO);
-        try { localStorage.setItem('devnote:last-update-check', String(Date.now())); } catch { /* ignore */ }
-        if (rel) setUpdate(rel);
-        else s.setNotice(`You're up to date (v${APP_VERSION})`);
-      })(),
-    };
-    // Telescope never lists its own toggle, hides note ops without an active
-    // note, and hides exit-workspace outside a workspace (no dead no-ops).
-    const NOTE_COMMANDS = new Set(['core:show-history', 'core:duplicate-note', 'core:trash-note', 'core:toggle-pin']);
-    return COMMAND_META.filter((m) => {
-      if (m.id === 'core:toggle-telescope') return false;
-      if (m.id === 'core:exit-workspace' && s.workspaceId === null) return false;
-      if (s.activeNoteId === null && NOTE_COMMANDS.has(m.id)) return false;
-      return true;
-    }).map((m) => ({
-      id: m.id,
-      title: m.title,
-      hint: m.binding?.replace('mod', modLabel()),
-      run: runs[m.id] ?? (() => undefined),
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.notes, store.activeNoteId, store.activeNote, store.selectedIds, store.selection, store.workspaceId]);
-
   const runTelescopeAction = (a: TelescopeAction) => {
-    const s = store;
+    const s = api.getState();
     switch (a.type) {
       case 'command': {
         commands.find((c) => c.id === a.id)?.run();
@@ -361,18 +408,18 @@ export default function App() {
           s.focusWorkspace(a.id);
         } else if (s.activeNoteId !== null) {
           s.commitPatch(s.activeNoteId, { notebookId: a.id });
-          s.setNotice('Note moved');
+          s.patch({ notice: 'Note moved' });
         } else {
-          s.setNotice('No active note to move');
+          s.patch({ notice: 'No active note to move' });
         }
         break;
       }
       case 'tag': {
         if (a.how === 'filter') {
-          pickQuery(`tag:${a.tag}`);
-        } else if (s.activeNote !== null) {
-          const cur = s.activeNote;
-          if (!cur.tags.includes(a.tag)) s.commitPatch(cur.id, { tags: [...cur.tags, a.tag] });
+          s.pickQuery(`tag:${a.tag}`);
+        } else {
+          const cur = s.notes.find((n) => n.id === s.activeNoteId) ?? null;
+          if (cur !== null && !cur.tags.includes(a.tag)) s.commitPatch(cur.id, { tags: [...cur.tags, a.tag] });
         }
         break;
       }
@@ -380,94 +427,23 @@ export default function App() {
         jumpToPos(a.pos);
         break;
       case 'theme':
-        store.updateSettings({ theme: a.mode });
+        s.updateSettings({ theme: a.mode });
         break;
     }
     setTelescopeOpen(false);
   };
 
   // ---- workspace view: sidebar scopes to one notebook subtree ----
-  const workspaceScopeIds = useMemo(() => {
-    if (store.workspaceId === null) return null;
-    if (!store.notebooks.some((n) => n.id === store.workspaceId)) return null;
-    return [store.workspaceId as string, ...descendantIds(store.notebooks, store.workspaceId as string)];
-  }, [store.workspaceId, store.notebooks]);
-
-  // Clear a stale workspace whose notebook was deleted.
-  const clearWorkspace = store.clearWorkspace;
-  useEffect(() => {
-    if (store.workspaceId !== null && workspaceScopeIds === null) clearWorkspace();
-  }, [store.workspaceId, workspaceScopeIds, clearWorkspace]);
-
-  const workspaceNotes = useMemo(
-    () => (workspaceScopeIds === null
-      ? store.notes
-      : store.notes.filter((n) => (workspaceScopeIds as string[]).includes(n.notebookId))),
-    [store.notes, workspaceScopeIds],
+  const workspaceScopeIds = useMemo(
+    () => workspaceScopeIdsFor(notebooks, workspaceId),
+    [notebooks, workspaceId],
   );
 
-  const sidebarTree = useMemo((): TreeNode[] => {
-    if (workspaceScopeIds === null) return store.tree;
-    const find = (nodes: TreeNode[]): TreeNode | null => {
-      for (const n of nodes) {
-        if (n.notebook.id === store.workspaceId) return n;
-        const hit = find(n.children);
-        if (hit) return hit;
-      }
-      return null;
-    };
-    return [find(store.tree)].filter((n): n is TreeNode => n !== null);
-  }, [store.tree, store.workspaceId, workspaceScopeIds]);
-
-  const workspacePath = store.workspaceId === null
-    ? null
-    : notebookPath(store.notebooks, store.workspaceId);
-
-  const statusCounts = useMemo(() => {
-    const counts = { none: 0, active: 0, onHold: 0, completed: 0, dropped: 0 } as Record<NoteStatus, number>;
-    for (const n of workspaceNotes) {
-      if (!n.trashed) counts[n.status] += 1;
-    }
-    return counts;
-  }, [workspaceNotes]);
-
-  const tagCounts = useMemo(() => {
-    // Case-folded (`JS` = `js`), first-seen casing wins — matches core allTags.
-    const map = new Map<string, { tag: string; count: number }>();
-    for (const n of workspaceNotes) {
-      if (n.trashed) continue;
-      for (const t of n.tags) {
-        const key = t.trim().toLowerCase();
-        if (key === '') continue;
-        const entry = map.get(key);
-        if (entry) entry.count += 1;
-        else map.set(key, { tag: t, count: 1 });
-      }
-    }
-    return [...map.values()].sort((a, b) => a.tag.localeCompare(b.tag));
-  }, [workspaceNotes]);
-
-  const label =
-    store.selection.kind === 'all'
-      ? 'All Notes'
-      : store.selection.kind === 'trash'
-        ? 'Trash'
-        : notebookPath(store.notebooks, store.selection.id) || 'Notebook';
-
-  const pickQuery = (q: string) => {
-    if (store.workspaceId !== null) {
-      // Stay in the workspace: filter its notebook locally.
-      store.focusWorkspace(store.workspaceId);
-    } else if (store.selection.kind !== 'all') {
-      store.select({ kind: 'all' });
-    }
-    store.setQuery(q);
-  };
-
-  const activeOrSelected = (): string[] => {
-    if (store.selectedIds.length > 0) return store.selectedIds;
-    return store.activeNoteId !== null ? [store.activeNoteId] : [];
-  };
+  // Clear a stale workspace whose notebook was deleted.
+  const clearWorkspaceStale = useDevnote((s) => s.clearWorkspace);
+  useEffect(() => {
+    if (workspaceId !== null && workspaceScopeIds === null) clearWorkspaceStale();
+  }, [workspaceId, workspaceScopeIds, clearWorkspaceStale]);
 
   const confirmDestroy = (ids: string[]) => {
     if (ids.length === 0) return;
@@ -475,7 +451,7 @@ export default function App() {
   };
 
   const moveRestore = (targetId: string) => {
-    if (restoreIds !== null) store.restore(restoreIds, targetId);
+    if (restoreIds !== null) restoreNotes(restoreIds, targetId);
     setRestoreIds(null);
   };
 
@@ -486,11 +462,11 @@ export default function App() {
         inTauri ? 'overflow-hidden rounded-[10px] ring-1 ring-black/10 dark:ring-white/10' : ''
       }`}
     >
-      {store.syncState === 'conflict' && (
+      {syncState === 'conflict' && (
         <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
           <span className="font-medium">Sync conflict</span>
           <span className="flex-1 opacity-80">Newer <code>updatedAt</code> won; loser saved as a reviewable note.</span>
-          <button className="rounded bg-red-100 px-2 py-1 text-xs hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800" onClick={store.syncNow}>
+          <button className="rounded bg-red-100 px-2 py-1 text-xs hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800" onClick={syncNow}>
             Resolve & sync
           </button>
         </div>
@@ -500,7 +476,7 @@ export default function App() {
         <ErrorBoundary name="sidebar">
         <Sidebar
           onDeleteNotebook={(id) => {
-            const nb = store.notebooks.find((n) => n.id === id);
+            const nb = notebooks.find((n) => n.id === id);
             if (nb) setNotebookDelete({ id: nb.id, name: nb.name });
           }}
           onDeleteTag={(name) => setTagDelete(name)}
@@ -532,7 +508,7 @@ export default function App() {
         onModeChange={setViewMode}
         viewRef={editorViewRef}
         onChooseTemplate={() => setTemplatePickerOpen(true)}
-        onOpenHistory={() => { if (store.activeNoteId !== null) setHistoryNoteId(store.activeNoteId); }}
+        onOpenHistory={() => { if (activeNoteId !== null) setHistoryNoteId(activeNoteId); }}
         onRestore={(id) => setRestoreIds([id])}
         onDeleteForever={(id) => confirmDestroy([id])}
       />
@@ -540,7 +516,7 @@ export default function App() {
 
       {restoreIds !== null && (
         <MoveToNotebookDialog
-          notebooks={store.notebooks}
+          notebooks={notebooks}
           count={restoreIds.length}
           onClose={() => setRestoreIds(null)}
           onMove={moveRestore}
@@ -549,10 +525,10 @@ export default function App() {
 
       {moveIds !== null && (
         <MoveToNotebookDialog
-          notebooks={store.notebooks}
+          notebooks={notebooks}
           count={moveIds.length}
           onClose={() => setMoveIds(null)}
-          onMove={(target) => { store.moveNotesTo(moveIds, target); setMoveIds(null); }}
+          onMove={(target) => { moveNotesTo(moveIds, target); setMoveIds(null); }}
         />
       )}
 
@@ -562,7 +538,7 @@ export default function App() {
           message={`Permanently delete ${destroyIds.length} note${destroyIds.length === 1 ? '' : 's'}? This cannot be undone.`}
           confirmLabel="Delete forever"
           danger
-          onConfirm={() => { store.destroy(destroyIds); setDestroyIds(null); }}
+          onConfirm={() => { destroyNotes(destroyIds); setDestroyIds(null); }}
           onClose={() => setDestroyIds(null)}
         />
       )}
@@ -573,7 +549,7 @@ export default function App() {
           message={`Delete notebook "${notebookDelete.name}"? Notes must be moved or trashed first.`}
           confirmLabel="Delete notebook"
           danger
-          onConfirm={() => { store.removeNotebook(notebookDelete.id); setNotebookDelete(null); }}
+          onConfirm={() => { removeNotebook(notebookDelete.id); setNotebookDelete(null); }}
           onClose={() => setNotebookDelete(null)}
         />
       )}
@@ -584,7 +560,7 @@ export default function App() {
           message={`Remove #${tagDelete} from all notes? Notes stay; the tag vanishes everywhere.`}
           confirmLabel="Delete tag"
           danger
-          onConfirm={() => { store.deleteTag(tagDelete); setTagDelete(null); }}
+          onConfirm={() => { deleteTag(tagDelete); setTagDelete(null); }}
           onClose={() => setTagDelete(null)}
         />
       )}
@@ -606,9 +582,8 @@ export default function App() {
       {historyNoteId !== null && (
         <RevisionHistoryDialog
           noteId={historyNoteId}
-          noteTitle={store.notes.find((n) => n.id === historyNoteId)?.title ?? ''}
-          revisions={store.revisions}
-          onRestore={store.restoreRevision}
+          revisions={revisions}
+          onRestore={restoreRevision}
           onClose={() => setHistoryNoteId(null)}
         />
       )}
@@ -617,14 +592,6 @@ export default function App() {
         {telescopeOpen && (
           <Telescope
             commands={commands}
-            notebooks={store.notebooks.map((n) => ({
-              id: n.id,
-              path: notebookPath(store.notebooks, n.id),
-              count: store.counts.get(n.id) ?? 0,
-            }))}
-            tags={tagCounts}
-            toc={toc}
-            hasActiveNote={store.activeNote !== null}
             onAction={runTelescopeAction}
             onClose={() => setTelescopeOpen(false)}
           />
@@ -633,24 +600,24 @@ export default function App() {
 
       {prefsOpen && (
         <PreferencesDialog
-          settings={store.settings}
-          notebooks={store.notebooks}
-          mirrorDir={store.mirrorDir}
-          syncState={store.syncState}
-          remoteUrl={store.remoteUrl}
-          syncBusy={store.syncBusy}
-          onUpdate={store.updateSettings}
-          onExportMirror={() => void store.exportMirror()}
-          onImportMirror={() => void store.importMirror()}
-          onSyncNow={store.syncNow}
-          onSetRemote={async (url) => { try { const { gitSetRemote, gitInit } = await import('./lib/sync'); await gitInit(); await gitSetRemote(url); await store.refreshSyncState(); } catch { /* non-fatal */ } }}
+          settings={settings}
+          notebooks={notebooks}
+          mirrorDir={mirrorDir}
+          syncState={syncState}
+          remoteUrl={remoteUrl}
+          syncBusy={syncBusy}
+          onUpdate={updateSettings}
+          onExportMirror={() => void exportMirror()}
+          onImportMirror={() => void importMirror()}
+          onSyncNow={syncNow}
+          onSetRemote={async (url) => { try { const { gitSetRemote, gitInit } = await import('./lib/sync'); await gitInit(); await gitSetRemote(url); await refreshSyncState(); } catch { /* non-fatal */ } }}
           onBackupZip={async () => {
             try {
               const { backupZip } = await import('./lib/sync');
               const info = await backupZip();
-              store.setNotice(`Backup saved: ${info.path} (${info.files} files)`);
+              api.getState().patch({ notice: `Backup saved: ${info.path} (${info.files} files)` });
             } catch (e) {
-              store.setNotice(e instanceof Error ? e.message : 'Backup failed');
+              api.getState().patch({ notice: e instanceof Error ? e.message : 'Backup failed' });
             }
           }}
           onRestoreZip={async () => {
@@ -663,11 +630,11 @@ export default function App() {
                 if (!file) return;
                 // Tauri can't read browser File directly — use invoke with path
                 // For now, show a notice pointing to the zip path
-                store.setNotice('Restore: place the zip in ~/devnote-backup.zip and click Restore');
+                api.getState().patch({ notice: 'Restore: place the zip in ~/devnote-backup.zip and click Restore' });
               };
               input.click();
             } catch (e) {
-              store.setNotice(e instanceof Error ? e.message : 'Restore failed');
+              api.getState().patch({ notice: e instanceof Error ? e.message : 'Restore failed' });
             }
           }}
           onClose={() => setPrefsOpen(false)}
@@ -676,19 +643,19 @@ export default function App() {
 
       {templatePickerOpen && (
         <TemplatePicker
-          templates={store.allTemplates}
-          recents={store.templateRecents}
-          onApply={(id) => { store.applyTemplateToNote(id); setTemplatePickerOpen(false); }}
-          onCreate={store.createTemplate}
-          onUpdate={store.updateTemplate}
-          onDelete={store.deleteTemplate}
-          onDuplicate={store.duplicateTemplate}
+          templates={allTemplates}
+          recents={templateRecents}
+          onApply={(id) => { applyTemplateToNote(id); setTemplatePickerOpen(false); }}
+          onCreate={createTemplate}
+          onUpdate={updateTemplate}
+          onDelete={deleteTemplate}
+          onDuplicate={duplicateTemplate}
           onClose={() => setTemplatePickerOpen(false)}
         />
       )}
 
       <AnimatePresence>
-        {store.notice !== null && (
+        {notice !== null && (
           <motion.div
             initial={{ opacity: 0, y: 12, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
@@ -696,8 +663,8 @@ export default function App() {
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className="fixed bottom-4 left-1/2 z-50 flex max-w-md items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-sm text-white shadow-xl dark:bg-zinc-100 dark:text-zinc-900"
           >
-            <span className="flex-1">{store.notice}</span>
-            <button className="rounded p-0.5 hover:opacity-70" onClick={() => store.setNotice(null)} title="Dismiss">
+            <span className="flex-1">{notice}</span>
+            <button className="rounded p-0.5 hover:opacity-70" onClick={() => dismissNotice({ notice: null })} title="Dismiss">
               <X size={14} />
             </button>
           </motion.div>
