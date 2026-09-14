@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { X } from 'reicon-react';
+import { ChevronRight, X } from 'reicon-react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { EditorView } from '@devnote/editor';
 import { BUNDLED_THEMES, BUILTIN_TEMPLATES, THEME_VAR_KEYS, getTheme, resolveIsDark } from '@devnote/core';
@@ -64,6 +64,15 @@ export default function App() {
   const remoteUrl = useDevnote((s) => s.remoteUrl);
   const syncBusy = useDevnote((s) => s.syncBusy);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [listOpen, setListOpen] = useState(true);
+  // Narrow windows start with the sidebar hidden (never auto-reopened).
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    if (mq.matches) setSidebarOpen(false);
+    const onChange = (e: MediaQueryListEvent) => { if (e.matches) setSidebarOpen(false); };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
   const [focusMode, setFocusMode] = useState(false); // distraction-free: editor only
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = localStorage.getItem('devnote:viewmode');
@@ -232,6 +241,11 @@ export default function App() {
         setSidebarOpen((v) => !v);
         return;
       }
+      if (mod && !e.shiftKey && e.key === '\\') {
+        e.preventDefault();
+        setListOpen((v) => !v);
+        return;
+      }
       if (mod && !e.shiftKey && (e.key === 'e' || e.key === 'E')) {
         e.preventDefault();
         setViewMode((m) => (m === 'preview' ? 'edit' : 'preview'));
@@ -312,6 +326,7 @@ export default function App() {
       'core:toggle-side-by-side': () => setViewMode((m) => (m === 'split' ? 'edit' : 'split')),
       'core:distraction-free': () => setFocusMode((v) => !v),
       'core:toggle-sidebar': () => setSidebarOpen((v) => !v),
+      'core:toggle-list': () => setListOpen((v) => !v),
       'core:focus-workspace': () => api.getState().toggleWorkspace(),
       'core:exit-workspace': () => api.getState().clearWorkspace(),
       'core:toggle-theme': () => toggleTheme(),
@@ -487,8 +502,10 @@ export default function App() {
 
       {!focusMode && (
       <ErrorBoundary name="note list">
+      {listOpen ? (
       <NoteList
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        onCollapseList={() => setListOpen(false)}
         onOpenTelescope={() => setTelescopeOpen(true)}
         onRestoreSelected={(ids) => {
           if (ids.length > 0) setRestoreIds(ids);
@@ -498,6 +515,18 @@ export default function App() {
           if (ids.length > 0) setMoveIds(ids);
         }}
       />
+      ) : (
+      <div className="flex w-9 shrink-0 flex-col items-center border-r border-[var(--border)] bg-[var(--bg-list)] pt-2">
+        <button
+          className="focus-ring rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          title="Expand note list (mod+\\)"
+          aria-label="Expand note list"
+          onClick={() => setListOpen(true)}
+        >
+          <ChevronRight size={16} className="opacity-60" />
+        </button>
+      </div>
+      )}
       </ErrorBoundary>
       )}
 

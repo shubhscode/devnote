@@ -16,6 +16,7 @@ export const COMMAND_META: CommandMeta[] = [
   { id: 'core:toggle-side-by-side', title: 'Toggle side-by-side (split)', binding: 'mod+P' },
   { id: 'core:distraction-free', title: 'Toggle distraction-free', binding: 'mod⇧D' },
   { id: 'core:toggle-sidebar', title: 'Toggle sidebar', binding: 'mod+/' },
+  { id: 'core:toggle-list', title: 'Toggle note list', binding: 'mod+\\' },
   { id: 'core:focus-workspace', title: 'Focus notebook as workspace', binding: 'mod+Enter' },
   { id: 'core:exit-workspace', title: 'Exit workspace (show all)' },
   { id: 'core:toggle-theme', title: 'Toggle light/dark theme' },

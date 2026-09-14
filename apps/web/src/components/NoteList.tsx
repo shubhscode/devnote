@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Archive, Command, Copy, Download, Filter, Global, Magnifier, Pin, Plus, Sidebar as SidebarIcon, Trash } from 'reicon-react';
+import { Archive, ChevronLeft, Command, Copy, Download, Filter, Global, Magnifier, Pin, Plus, Sidebar as SidebarIcon, Trash } from 'reicon-react';
 import { NOTE_STATUSES, bestSnippet, isExclusionsOnly, parseSearch, titleRanges, type NoteSortKey, type NoteStatus, type Range, type SearchTerm } from '@devnote/core';
 import type { Note } from '@devnote/core';
 import { activeOrSelectedIds, computeVisible, labelFor, useDevnote } from '../lib/store';
@@ -7,6 +7,7 @@ import { StatusPill, STATUS_META } from './StatusPill';
 
 interface NoteListProps {
   onToggleSidebar: () => void;
+  onCollapseList: () => void;
   onOpenTelescope: () => void;
   onRestoreSelected: (ids: string[]) => void;
   onDeleteSelected: (ids: string[]) => void;
@@ -203,6 +204,14 @@ export default function NoteList(props: NoteListProps) {
           <option value="created">Created</option>
           <option value="title">Title</option>
         </select>
+        <button
+          className="focus-ring shrink-0 rounded p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          title="Collapse note list (mod+\\)"
+          aria-label="Collapse note list"
+          onClick={props.onCollapseList}
+        >
+          <ChevronLeft size={14} className="opacity-60" />
+        </button>
       </div>
 
       {exclusionsOnly && (
