@@ -62,7 +62,7 @@ import {
 } from './store/persist';
 import type { PersistedState } from './store/persist';
 import { computeVisible, filterBySelectionDirect } from './store/select';
-import { getDevnoteStore, setStoreState } from './store/state';
+import { editClock, getDevnoteStore, setStoreState } from './store/state';
 import type { SearchScope, Selection, Settings } from './store/types';
 
 export type { TreeNode };
@@ -166,7 +166,6 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
   useEffect(() => {
     activeIdRef.current = activeNoteId;
   }, [activeNoteId]);
-  const lastEditAt = useRef(0);
   const lastSnap = useRef<{ id: string; title: string; body: string } | null>(null);
 
   // External body writes (template apply, revision restore): the editor view
@@ -257,7 +256,7 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
   const snapshotIdle = useCallback(() => {
     const id = activeIdRef.current;
     if (id === null) return;
-    if (Date.now() - lastEditAt.current < IDLE_SNAPSHOT_MS) return;
+    if (Date.now() - editClock.lastEditAt < IDLE_SNAPSHOT_MS) return;
     snapshotNote(id);
   }, [snapshotNote]);
 
@@ -579,222 +578,8 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
   /** Initialize sync state on mount. */
   useEffect(() => { refreshSyncState(); }, [refreshSyncState]);
 
-  const newNote = useCallback(() => {
-    const target =
-      selection.kind === 'notebook' ? selection.id : defaultNotebookId;
-    if (target === null) {
-      setNotice('Create a notebook first');
-      return;
-    }
-    try {
-      const { notes: next, note } = createNote(notes, notebooks, { notebookId: target });
-      setNotes(next);
-      setSelectedIds([note.id]);
-      setActiveNoteId(note.id);
-    } catch (e) {
-      fail(e);
-    }
-  }, [notes, notebooks, selection, defaultNotebookId, fail]);
-
-  const commitPatch = useCallback((id: string, patch: { title?: string; body?: string; tags?: string[]; status?: NoteStatus; pinned?: boolean; notebookId?: string }) => {
-    try {
-      setNotes((ns) => updateNote(ns, notebooks, id, patch));
-      lastEditAt.current = Date.now();
-    } catch (e) {
-      fail(e);
-    }
-  }, [notebooks, fail]);
-
-  const duplicate = useCallback((ids: string[]) => {
-    try {
-      let next = notes;
-      let first: Note | null = null;
-      for (const id of ids) {
-        const r = duplicateNote(next, id);
-        next = r.notes;
-        first ??= r.note;
-      }
-      setNotes(next);
-      if (first) {
-        setSelectedIds([first.id]);
-        setActiveNoteId(first.id);
-      }
-    } catch (e) {
-      fail(e);
-    }
-  }, [notes, fail]);
-
-  const trash = useCallback((ids: string[]) => {
-    setNotes((ns) => trashNotes(ns, ids));
-    setSelectedIds([]);
-    setActiveNoteId((cur) => (cur !== null && ids.includes(cur) ? null : cur));
-  }, []);
-
-  const restore = useCallback((ids: string[], targetNotebookId: string) => {
-    try {
-      setNotes((ns) => restoreNotes(ns, notebooks, ids, targetNotebookId));
-      setSelectedIds([]);
-    } catch (e) {
-      fail(e);
-    }
-  }, [notebooks, fail]);
-
-  const destroy = useCallback((ids: string[]) => {
-    try {
-      setNotes((ns) => deleteNotesPermanently(ns, ids));
-      setSelectedIds([]);
-      setActiveNoteId((cur) => (cur !== null && ids.includes(cur) ? null : cur));
-    } catch (e) {
-      fail(e);
-    }
-  }, [fail]);
-
-  /** Shift-click range: anchor = last selected (else active), union over visible order. */
-  const selectRange = useCallback((id: string) => {
-    const order = visibleNotes.map((n) => n.id);
-    if (!order.includes(id)) return;
-    const anchor = selectedIds.length > 0 ? selectedIds[selectedIds.length - 1]! : activeIdRef.current;
-    if (anchor === null || !order.includes(anchor)) {
-      setSelectedIds([id]);
-    } else {
-      const [a, b] = [order.indexOf(anchor), order.indexOf(id)].sort((x, y) => x - y) as [number, number];
-      const range = order.slice(a, b + 1);
-      setSelectedIds((s) => [...new Set([...s, ...range])]);
-    }
-    setActiveNoteId(id);
-  }, [visibleNotes, selectedIds]);
-
-  const moveNotesTo = useCallback((ids: string[], notebookId: string) => {
-    try {
-      setNotes((ns) => moveNotesCore(ns, notebooks, ids, notebookId));
-    } catch (e) {
-      fail(e);
-    }
-  }, [notebooks, fail]);
-
-  const bulkTag = useCallback((ids: string[], tag: string) => {
-    try {
-      setNotes((ns) => tagNotesCore(ns, ids, tag));
-    } catch (e) {
-      fail(e);
-    }
-  }, [fail]);
-
-  const bulkStatus = useCallback((ids: string[], status: NoteStatus) => {
-    try {
-      setNotes((ns) => setNotesStatus(ns, ids, status));
-    } catch (e) {
-      fail(e);
-    }
-  }, [fail]);
-
-  const bulkPin = useCallback((ids: string[], pinned: boolean) => {
-    try {
-      setNotes((ns) => setNotesPinned(ns, ids, pinned));
-    } catch (e) {
-      fail(e);
-    }
-  }, [fail]);
-
-  /** Download selected notes as individual Markdown files (reimportable via mirror). */
-  const exportNotes = useCallback((ids: string[]) => {
-    try {
-      const set = new Set(ids);
-      const targets = notes.filter((n) => set.has(n.id));
-      if (targets.length === 0) {
-        setNotice('Nothing selected');
-        return;
-      }
-      targets.forEach((note, i) => {
-        const blob = new Blob([noteToMarkdown(note, notebooks)], { type: 'text/markdown' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = noteFilename(note);
-        document.body.appendChild(a);
-        window.setTimeout(() => {
-          a.click();
-          document.body.removeChild(a);
-          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }, i * 150);
-      });
-      setNotice(`Exported ${targets.length} note${targets.length === 1 ? '' : 's'} as Markdown`);
-    } catch (e) {
-      fail(e);
-    }
-  }, [notes, notebooks, fail]);
-
-  const reorderNotebook = useCallback((id: string, dir: -1 | 1) => {
-    try {
-      setNotebooks((ns) => reorderNotebookCore(ns, id, dir));
-    } catch (e) {
-      fail(e);
-    }
-  }, [fail]);
-
-  const addNotebook = useCallback((parentId: string | null): string | null => {
-    try {
-      const next = createNotebook(notebooks, { name: 'Untitled notebook', parentId });
-      setNotebooks(next);
-      const created = next[next.length - 1];
-      return created?.id ?? null;
-    } catch (e) {
-      fail(e);
-      return null;
-    }
-  }, [notebooks, fail]);
-
-  const rename = useCallback((id: string, name: string) => {
-    try {
-      setNotebooks((ns) => renameNotebook(ns, id, name));
-    } catch (e) {
-      fail(e);
-    }
-  }, [fail]);
-
-  const renameTag = useCallback((oldName: string, newName: string) => {
-    try {
-      setNotes((ns) => renameTagNotes(ns, oldName, newName));
-      if (query.trim().toLowerCase() === `tag:${oldName.trim().toLowerCase()}`) {
-        setQuery(`tag:${newName.trim()}`);
-      }
-    } catch (e) {
-      fail(e);
-    }
-  }, [query, fail]);
-
-  const mergeTags = useCallback((from: string[], into: string) => {
-    try {
-      setNotes((ns) => mergeTagNotes(ns, from, into));
-    } catch (e) {
-      fail(e);
-    }
-  }, [fail]);
-
-  const deleteTag = useCallback((name: string) => {
-    try {
-      setNotes((ns) => untagNotes(ns, name));
-    } catch (e) {
-      fail(e);
-    }
-  }, [fail]);
-
-  const removeNotebook = useCallback((id: string) => {
-    try {
-      setNotebooks((ns) => deleteNotebook(ns, notes, id));
-      setSelection((s) => (s.kind === 'notebook' && s.id === id ? { kind: 'all' } : s));
-    } catch (e) {
-      fail(e);
-    }
-  }, [notes, fail]);
-
-  const toggleExpand = useCallback((id: string) => {
-    setExpanded((e) => (e.includes(id) ? e.filter((x) => x !== id) : [...e, id]));
-  }, []);
-
-  const toggleScope = useCallback(() => {
-    setScope((s) => (s === 'local' ? 'global' : 'local'));
-  }, []);
+  // Data actions live in the zustand store (stable identities via get()/set()).
+  const storeActions = store.getState();
 
   // ---------- templates ----------
 
@@ -899,11 +684,30 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
     notebooks, notes, tree, counts, tags, trashedCount, defaultNotebookId,
     selection, activeNoteId, activeNote, selectedIds, query, scope, expanded,
     past, future, notice, visibleNotes, exclusionsOnly,
-    setQuery, setScope, toggleScope, setNotice, select, openNote, navigateTo, goBack, goForward,
-    newNote, commitPatch, duplicate, trash, restore, destroy,
-    moveNotesTo, bulkTag, bulkStatus, bulkPin, exportNotes, selectRange, setSelectedIds,
-    addNotebook, rename, removeNotebook, reorderNotebook, toggleExpand, workspaceId, focusWorkspace, clearWorkspace, toggleWorkspace,
-    renameTag, mergeTags, deleteTag,
+    setQuery, setScope, setNotice, select, openNote, navigateTo, goBack, goForward,
+    newNote: storeActions.newNote,
+    commitPatch: storeActions.commitPatch,
+    duplicate: storeActions.duplicate,
+    trash: storeActions.trash,
+    restore: storeActions.restore,
+    destroy: storeActions.destroy,
+    moveNotesTo: storeActions.moveNotesTo,
+    bulkTag: storeActions.bulkTag,
+    bulkStatus: storeActions.bulkStatus,
+    bulkPin: storeActions.bulkPin,
+    exportNotes: storeActions.exportNotes,
+    selectRange: storeActions.selectRange,
+    toggleScope: storeActions.toggleScope,
+    setSelectedIds,
+    addNotebook: storeActions.addNotebook,
+    rename: storeActions.rename,
+    removeNotebook: storeActions.removeNotebook,
+    reorderNotebook: storeActions.reorderNotebook,
+    toggleExpand: storeActions.toggleExpand,
+    workspaceId, focusWorkspace, clearWorkspace, toggleWorkspace,
+    renameTag: storeActions.renameTag,
+    mergeTags: storeActions.mergeTags,
+    deleteTag: storeActions.deleteTag,
     allTemplates, templateRecents, externalBodyWrite, revisions, settings, mirrorDir,
     createTemplate, updateTemplate, deleteTemplate, duplicateTemplate, applyTemplateToNote,
     snapshotNote, snapshotIdle, restoreRevision, updateSettings,
