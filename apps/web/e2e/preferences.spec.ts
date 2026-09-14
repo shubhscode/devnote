@@ -33,9 +33,9 @@ test('default notebook applies to new notes', async ({ page }) => {
 test('shortcut filter narrows the list', async ({ page }) => {
   await page.getByTitle('Preferences (mod+,)').click();
   await page.getByText('Shortcuts').click();
-  await expect(page.getByText('25 of 25 commands')).toBeVisible();
+  await expect(page.getByText('26 of 26 commands')).toBeVisible();
   await page.getByLabel('Filter shortcuts').fill('trash');
-  await expect(page.getByText('1 of 25 commands')).toBeVisible();
+  await expect(page.getByText('1 of 26 commands')).toBeVisible();
   await expect(page.getByText('No shortcuts match')).toHaveCount(0);
   await page.getByLabel('Filter shortcuts').fill('zzz-nope');
   await expect(page.getByText('No shortcuts match')).toBeVisible();

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Archive, ChevronLeft, Command, Copy, Download, Filter, Global, Magnifier, Pin, Plus, Sidebar as SidebarIcon, Trash } from 'reicon-react';
 import { NOTE_STATUSES, bestSnippet, isExclusionsOnly, parseSearch, titleRanges, type NoteSortKey, type NoteStatus, type Range, type SearchTerm } from '@devnote/core';
 import type { Note } from '@devnote/core';
@@ -14,8 +15,6 @@ interface NoteListProps {
   onMoveSelected: (ids: string[]) => void;
 }
 
-/** Render cap — long lists stay fast; the count line shows the total. */
-const RENDER_CAP = 200;
 /** Max tag chips per row before collapsing into +N. */
 const TAG_CAP = 3;
 
@@ -99,6 +98,7 @@ export default function NoteList(props: NoteListProps) {
   const query = useDevnote((s) => s.query);
   const scope = useDevnote((s) => s.scope);
   const sortKey = useDevnote((s) => s.settings.noteSort);
+  const listWidth = useDevnote((s) => s.settings.listWidth);
   const patch = useDevnote((s) => s.patch);
   const toggleScope = useDevnote((s) => s.toggleScope);
   const setQuery = (q: string) => patch({ query: q });
@@ -124,7 +124,16 @@ export default function NoteList(props: NoteListProps) {
   const targets = activeOrSelectedIds(selectedIds, activeId);
   const multi = selectedIds.length > 1;
   const terms = useMemo(() => parseSearch(query), [query]);
-  const shown = visible.slice(0, RENDER_CAP);
+  const listRef = useRef<HTMLDivElement>(null);
+  // Windowed rendering past any list size: rows measure themselves
+  // (variable heights from tags/status), keyed by stable note id.
+  const rowVirtualizer = useVirtualizer({
+    count: visible.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 72,
+    getItemKey: (index) => visible[index]!.id,
+    overscan: 8,
+  });
   const [tagging, setTagging] = useState(false);
   const [tagDraft, setTagDraft] = useState('');
   const allVisibleSelected = visible.length > 0 && visible.every((n) => selectedIds.includes(n.id));
@@ -139,7 +148,8 @@ export default function NoteList(props: NoteListProps) {
 
   return (
     <section
-      className="flex w-80 flex-col border-r border-[var(--border)] bg-[var(--bg-list)]"
+      style={{ width: listWidth }}
+      className="flex shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg-list)]"
       onKeyDown={(e) => {
         // Scoped select-all: never steals mod+A from the editor.
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
@@ -290,32 +300,36 @@ export default function NoteList(props: NoteListProps) {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div ref={listRef} data-testid="note-list-scroll" className="flex-1 overflow-y-auto">
         {visible.length === 0 && !exclusionsOnly && (
           <div className="px-4 py-8 text-center text-sm opacity-50">
             No notes here yet.<br />Press <kbd className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">mod+N</kbd> to create one.
           </div>
         )}
-        {shown.map((n) => {
-          const isActive = n.id === activeId;
-          const isChecked = selectedIds.includes(n.id);
-          return (
-            <MemoizedNoteRow
-              key={n.id}
-              note={n}
-              isActive={isActive}
-              isChecked={isChecked}
-              terms={terms}
-              onOpen={openNote}
-              onRangeSelect={selectRange}
-            />
-          );
-        })}
-        {visible.length > RENDER_CAP && (
-          <div className="px-4 py-2 text-center text-xs opacity-50">
-            Showing first {RENDER_CAP} of {visible.length} — refine your search
-          </div>
-        )}
+        <div style={{ height: rowVirtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
+          {rowVirtualizer.getVirtualItems().map((vr) => {
+            const n = visible[vr.index]!;
+            const isActive = n.id === activeId;
+            const isChecked = selectedIds.includes(n.id);
+            return (
+              <div
+                key={vr.key}
+                data-index={vr.index}
+                ref={rowVirtualizer.measureElement}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vr.start}px)` }}
+              >
+                <MemoizedNoteRow
+                  note={n}
+                  isActive={isActive}
+                  isChecked={isChecked}
+                  terms={terms}
+                  onOpen={openNote}
+                  onRangeSelect={selectRange}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );

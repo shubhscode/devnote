@@ -16,6 +16,7 @@
     "@devnote/preview": "workspace:*",
     "@devnote/sync": "workspace:*",
     "@formkit/auto-animate": "^0.10.0",
+    "@tanstack/react-virtual": "^3.14.13",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-opener": "^2.5.5",
     "highlight.js": "^11.12.0",
