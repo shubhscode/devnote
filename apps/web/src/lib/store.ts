@@ -81,17 +81,29 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
   const notes = store((s) => s.notes);
   const setNotebooks = useCallback((u: SetStateAction<Notebook[]>) => setStoreState(store, 'notebooks', u), [store]);
   const setNotes = useCallback((u: SetStateAction<Note[]>) => setStoreState(store, 'notes', u), [store]);
-  const [selection, setSelection] = useState<Selection>({ kind: 'all' });
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(initial.notes[0]?.id ?? null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [query, setQuery] = useState('');
-  const [scope, setScope] = useState<SearchScope>('local');
+  // UI slice lives in zustand; subscribed per-field so panes stop
+  // re-rendering on unrelated state changes (Track 1.1).
+  const selection = store((s) => s.selection);
+  const activeNoteId = store((s) => s.activeNoteId);
+  const selectedIds = store((s) => s.selectedIds);
+  const query = store((s) => s.query);
+  const scope = store((s) => s.scope);
   /** Workspace root notebook id — sidebar scopes to its subtree. */
-  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<string[]>([]);
-  const [past, setPast] = useState<string[]>([]);
-  const [future, setFuture] = useState<string[]>([]);
-  const [notice, setNotice] = useState<string | null>(null);
+  const workspaceId = store((s) => s.workspaceId);
+  const expanded = store((s) => s.expanded);
+  const past = store((s) => s.past);
+  const future = store((s) => s.future);
+  const notice = store((s) => s.notice);
+  const setSelection = useCallback((u: SetStateAction<Selection>) => setStoreState(store, 'selection', u), [store]);
+  const setActiveNoteId = useCallback((u: SetStateAction<string | null>) => setStoreState(store, 'activeNoteId', u), [store]);
+  const setSelectedIds = useCallback((u: SetStateAction<string[]>) => setStoreState(store, 'selectedIds', u), [store]);
+  const setQuery = useCallback((u: SetStateAction<string>) => setStoreState(store, 'query', u), [store]);
+  const setScope = useCallback((u: SetStateAction<SearchScope>) => setStoreState(store, 'scope', u), [store]);
+  const setWorkspaceId = useCallback((u: SetStateAction<string | null>) => setStoreState(store, 'workspaceId', u), [store]);
+  const setExpanded = useCallback((u: SetStateAction<string[]>) => setStoreState(store, 'expanded', u), [store]);
+  const setPast = useCallback((u: SetStateAction<string[]>) => setStoreState(store, 'past', u), [store]);
+  const setFuture = useCallback((u: SetStateAction<string[]>) => setStoreState(store, 'future', u), [store]);
+  const setNotice = useCallback((u: SetStateAction<string | null>) => setStoreState(store, 'notice', u), [store]);
 
   useEffect(() => {
     // Debounced: stringifying thousands of notes per keystroke janks.
@@ -120,10 +132,14 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
     return () => window.removeEventListener('pagehide', flush);
   }, [adapter]);
 
-  const [customTemplates, setCustomTemplates] = useState<Template[]>(initial.customTemplates);
-  const [templateRecents, setTemplateRecents] = useState<string[]>(initial.templateRecents);
-  const [revisions, setRevisions] = useState<Revision[]>(initial.revisions);
-  const [settings, setSettings] = useState<Settings>(initial.settings);
+  const customTemplates = store((s) => s.customTemplates);
+  const templateRecents = store((s) => s.templateRecents);
+  const revisions = store((s) => s.revisions);
+  const settings = store((s) => s.settings);
+  const setCustomTemplates = useCallback((u: SetStateAction<Template[]>) => setStoreState(store, 'customTemplates', u), [store]);
+  const setTemplateRecents = useCallback((u: SetStateAction<string[]>) => setStoreState(store, 'templateRecents', u), [store]);
+  const setRevisions = useCallback((u: SetStateAction<Revision[]>) => setStoreState(store, 'revisions', u), [store]);
+  const setSettings = useCallback((u: SetStateAction<Settings>) => setStoreState(store, 'settings', u), [store]);
 
   useEffect(() => {
     try {
@@ -422,11 +438,16 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
 
   // ---------- file mirror + git sync (Phase 3a/3b, desktop only) ----------
 
-  const [mirrorDir, setMirrorDir] = useState<string | null>(null);
-  const [syncState, setSyncState] = useState<SyncState>('no-repo');
-  const [syncDevice, setSyncDevice] = useState('device');
-  const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
-  const [syncBusy, setSyncBusy] = useState(false);
+  const mirrorDir = store((s) => s.mirrorDir);
+  const syncState = store((s) => s.syncState);
+  const syncDevice = store((s) => s.syncDevice);
+  const remoteUrl = store((s) => s.remoteUrl);
+  const syncBusy = store((s) => s.syncBusy);
+  const setMirrorDir = useCallback((u: SetStateAction<string | null>) => setStoreState(store, 'mirrorDir', u), [store]);
+  const setSyncState = useCallback((u: SetStateAction<SyncState>) => setStoreState(store, 'syncState', u), [store]);
+  const setSyncDevice = useCallback((u: SetStateAction<string>) => setStoreState(store, 'syncDevice', u), [store]);
+  const setRemoteUrl = useCallback((u: SetStateAction<string | null>) => setStoreState(store, 'remoteUrl', u), [store]);
+  const setSyncBusy = useCallback((u: SetStateAction<boolean>) => setStoreState(store, 'syncBusy', u), [store]);
 
   /** Write all notes to ~/devnote, pruning moved/deleted files. */
   const exportMirror = useCallback(async (): Promise<void> => {
