@@ -5,11 +5,13 @@ import { NOTE_STATUSES, bestSnippet, isExclusionsOnly, parseSearch, titleRanges,
 import type { Note } from '@devnote/core';
 import { activeOrSelectedIds, computeVisible, labelFor, useDevnote } from '../lib/store';
 import { StatusPill, STATUS_META } from './StatusPill';
+import EmptyState from './EmptyState';
 
 interface NoteListProps {
   onToggleSidebar: () => void;
   onCollapseList: () => void;
   onOpenTelescope: () => void;
+  onChooseTemplate: () => void;
   onRestoreSelected: (ids: string[]) => void;
   onDeleteSelected: (ids: string[]) => void;
   onMoveSelected: (ids: string[]) => void;
@@ -301,10 +303,33 @@ export default function NoteList(props: NoteListProps) {
       )}
 
       <div ref={listRef} data-testid="note-list-scroll" className="flex-1 overflow-y-auto">
-        {visible.length === 0 && !exclusionsOnly && (
-          <div className="px-4 py-8 text-center text-sm opacity-50">
-            No notes here yet.<br />Press <kbd className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">mod+N</kbd> to create one.
+        {visible.length === 0 && !exclusionsOnly && query.trim() !== '' && (
+          <div className="flex flex-col items-center gap-1 px-6 py-10 text-center">
+            <p className="font-mono text-sm text-[var(--accent)]">// no matches</p>
+            <p className="max-w-60 text-sm opacity-60">No notes match “{query.trim()}”. Try fewer qualifiers.</p>
+            <button
+              onClick={() => setQuery('')}
+              className="focus-ring mt-3 rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              Clear search
+            </button>
           </div>
+        )}
+        {visible.length === 0 && !exclusionsOnly && query.trim() === '' && selection.kind === 'trash' && (
+          <div className="px-4 py-8 text-center text-sm opacity-50">
+            Trash is empty.<br />Deleted notes land here first.
+          </div>
+        )}
+        {visible.length === 0 && !exclusionsOnly && query.trim() === '' && selection.kind !== 'trash' && (
+          <EmptyState
+            heading="// no notes yet"
+            hint="Start writing, start from a template, or jump anywhere."
+            actions={[
+              { label: 'New note', kbd: 'mod+N', primary: true, onSelect: () => newNote() },
+              { label: 'From template', kbd: 'mod+T', onSelect: () => props.onChooseTemplate() },
+              { label: 'Find anything', kbd: 'mod+K', onSelect: () => props.onOpenTelescope() },
+            ]}
+          />
         )}
         <div style={{ height: rowVirtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
           {rowVirtualizer.getVirtualItems().map((vr) => {

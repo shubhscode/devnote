@@ -17,7 +17,7 @@ test('trash active note, restore, delete forever', async ({ page }) => {
   // Trash the active note from the editor menu — the app must stay alive.
   await page.getByTitle('More actions').click();
   await page.getByText('Move to trash', { exact: true }).click();
-  await expect(page.getByText('No note selected')).toBeVisible();
+  await expect(page.getByText('// nothing open')).toBeVisible();
   await expect(page.getByRole('button', { name: /^Trash \d+$/ })).toBeVisible();
   expect(errors).toEqual([]);
 

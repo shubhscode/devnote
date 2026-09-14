@@ -29,6 +29,7 @@ interface EditorProps {
   /** Jump when no editor view is mounted (preview-only mode) — App mounts it. */
   onRequestJump: (pos: number) => void;
   onChooseTemplate: () => void;
+  onOpenTelescope: () => void;
   onOpenHistory: () => void;
   onRestore: (id: string) => void;
   onDeleteForever: (id: string) => void;
@@ -123,10 +124,19 @@ export default function Editor(props: EditorProps) {
   if (note === null) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-3 opacity-60">
-        <p className="text-sm">No note selected</p>
-        <button className="flex items-center gap-1.5 rounded bg-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent-fg)] hover:opacity-90" onClick={newNote}>
-          <Plus size={15} /> New note
-        </button>
+        <p className="font-mono text-sm text-[var(--accent)] opacity-100">{'// nothing open'}</p>
+        <p className="text-sm">Pick a note, or start fresh.</p>
+        <div className="mt-1 flex items-center gap-2 opacity-100">
+          <button className="focus-ring flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent-fg)] hover:opacity-90" title="New note (mod+N)" onClick={newNote}>
+            <Plus size={15} /> New note
+          </button>
+          <button className="focus-ring rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Start from a template (mod+T)" onClick={props.onChooseTemplate}>
+            From template
+          </button>
+          <button className="focus-ring rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Find anything (mod+K)" onClick={props.onOpenTelescope}>
+            Find anything
+          </button>
+        </div>
       </main>
     );
   }

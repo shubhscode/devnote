@@ -520,6 +520,7 @@ export default function App() {
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
         onCollapseList={() => setListOpen(false)}
         onOpenTelescope={() => setTelescopeOpen(true)}
+        onChooseTemplate={() => setTemplatePickerOpen(true)}
         onRestoreSelected={(ids) => {
           if (ids.length > 0) setRestoreIds(ids);
         }}
@@ -561,6 +562,7 @@ export default function App() {
         viewRef={editorViewRef}
         onRequestJump={jumpToPos}
         onChooseTemplate={() => setTemplatePickerOpen(true)}
+        onOpenTelescope={() => setTelescopeOpen(true)}
         onOpenHistory={() => { if (activeNoteId !== null) setHistoryNoteId(activeNoteId); }}
         onRestore={(id) => setRestoreIds([id])}
         onDeleteForever={(id) => confirmDestroy([id])}
