@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { motion } from 'motion/react';
 import { CloseCircle, History } from 'reicon-react';
 import { revisionsForNote } from '@devnote/core';
 import type { Revision } from '@devnote/core';
@@ -46,8 +47,19 @@ export default function RevisionHistoryDialog(props: Props) {
   const selected = list.find((r) => r.id === selectedId) ?? null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={props.onClose}>
-      <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onClick={props.onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, y: -8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: -4 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
         role="dialog"
         aria-modal="true"
         aria-label="Revision history"
@@ -109,7 +121,7 @@ export default function RevisionHistoryDialog(props: Props) {
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

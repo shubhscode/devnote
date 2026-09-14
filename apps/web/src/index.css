@@ -62,9 +62,39 @@ html.tauri #root {
 
 /* ---------- Motion foundations (M1: Motion + auto-animate) ---------- */
 :root {
-  --motion-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --motion-fast: 150ms;
   --motion-mid: 200ms;
+  --motion-overlay: 180ms;
+}
+
+/* Press feedback for keyboard-focusable icon buttons: smallest change
+   that makes cause → result unmistakable (100–150ms, transform only). */
+button.focus-ring {
+  transition:
+    transform var(--motion-fast) var(--motion-ease-out),
+    background-color var(--motion-fast) ease-out,
+    opacity var(--motion-fast) ease-out;
+}
+button.focus-ring:active {
+  transform: scale(0.94);
+}
+
+/* Banner entrance: acknowledge state (conflict / workspace) without
+   waiting — opacity + 6px rise, exits faster via AnimatePresence. */
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.banner-in {
+  animation: banner-in var(--motion-overlay) var(--motion-ease-out);
 }
 
 /* Note-list rows: CSS-only enter (auto-animate clones stale nodes on
@@ -89,7 +119,17 @@ html.tauri #root {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  /* Reduced motion = fewer + gentler, not erased: kill spatial movement
+     while keeping opacity/color state feedback legible. */
+  .note-row-in,
+  .banner-in {
+    animation: none !important;
+  }
+  button.focus-ring:active {
+    transform: none;
   }
 }
 

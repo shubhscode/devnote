@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { motion } from 'motion/react';
 import { CloseCircle, Notebook as NotebookIcon } from 'reicon-react';
 import { notebookPath } from '@devnote/core';
 import type { Notebook as NotebookType } from '@devnote/core';
@@ -24,11 +25,19 @@ export default function MoveToNotebookDialog(props: Props) {
   }, [props]);
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={props.onClose}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, y: -8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: -4 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
         role="dialog"
         aria-modal="true"
         ref={panelRef}
@@ -56,7 +65,7 @@ export default function MoveToNotebookDialog(props: Props) {
             </button>
           ))}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

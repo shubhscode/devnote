@@ -59,7 +59,7 @@ const NoteRow = ({
         if (e.shiftKey) onRangeSelect(note.id);
         else onOpen(note.id, e.metaKey || e.ctrlKey);
       }}
-      className={`note-row-in cursor-default border-b border-[var(--border-soft)] px-3 py-2.5 ${isActive ? 'bg-[var(--accent-soft)]' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900'} ${isChecked && !isActive ? 'bg-[var(--accent-soft)]' : ''}`}
+      className={`note-row-in cursor-default border-b border-[var(--border-soft)] px-3 py-2.5 transition-colors duration-150 ${isActive ? 'bg-[var(--accent-soft)]' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900'} ${isChecked && !isActive ? 'bg-[var(--accent-soft)]' : ''}`}
     >
       <div className="flex items-center gap-1.5">
         {note.pinned && <Pin size={12} weight="Filled" className="shrink-0 opacity-60" />}

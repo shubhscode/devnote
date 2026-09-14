@@ -247,7 +247,7 @@ export default function Sidebar(props: SidebarProps) {
     <aside style={{ width: sidebarWidth }} className="flex shrink-0 flex-col overflow-y-auto border-r border-[var(--border)] bg-[var(--bg-sidebar)]">
       <TrafficLights />
       {workspacePath !== null && (
-        <div className="flex items-center gap-1.5 border-b border-[var(--border)] bg-[var(--accent-soft)] px-2 py-1.5">
+        <div className="banner-in flex items-center gap-1.5 border-b border-[var(--border)] bg-[var(--accent-soft)] px-2 py-1.5">
           <span className="min-w-0 flex-1 truncate text-xs" title={workspacePath}>
             <span className="font-semibold uppercase opacity-60">Workspace · </span>
             {workspacePath}
@@ -309,9 +309,9 @@ export default function Sidebar(props: SidebarProps) {
             <span className={`h-2 w-2 shrink-0 rounded-full ${
               syncState === 'clean' ? 'bg-green-500' :
               syncState === 'conflict' || syncState === 'diverged' ? 'bg-red-500' :
-              syncState === 'ahead' ? 'bg-sky-500' :
-              syncState === 'behind' ? 'bg-orange-500' :
-              'bg-amber-500'
+              syncState === 'ahead' ? 'bg-sky-500 animate-pulse' :
+              syncState === 'behind' ? 'bg-orange-500 animate-pulse' :
+              'bg-amber-500 animate-pulse'
             }`} />
             <span className="flex-1 opacity-70">{
               syncState === 'clean' ? 'Synced' :

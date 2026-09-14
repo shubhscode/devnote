@@ -509,7 +509,7 @@ export default function App() {
       }`}
     >
       {syncState === 'conflict' && (
-        <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+        <div className="banner-in flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
           <span className="font-medium">Sync conflict</span>
           <span className="flex-1 opacity-80">Newer <code>updatedAt</code> won; loser saved as a reviewable note.</span>
           {conflictNoteIds.length > 0 && conflictNoteIds[0] !== undefined && (
@@ -602,6 +602,7 @@ export default function App() {
       />
       </ErrorBoundary>
 
+      <AnimatePresence>
       {restoreIds !== null && (
         <MoveToNotebookDialog
           notebooks={notebooks}
@@ -610,7 +611,9 @@ export default function App() {
           onMove={moveRestore}
         />
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {moveIds !== null && (
         <MoveToNotebookDialog
           notebooks={notebooks}
@@ -619,7 +622,9 @@ export default function App() {
           onMove={(target) => { moveNotesTo(moveIds, target); setMoveIds(null); }}
         />
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {destroyIds !== null && (
         <ConfirmDialog
           title="Delete forever?"
@@ -630,7 +635,9 @@ export default function App() {
           onClose={() => setDestroyIds(null)}
         />
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {restoreZipPath !== null && (
         <ConfirmDialog
           title="Restore from backup?"
@@ -654,7 +661,9 @@ export default function App() {
           onClose={() => setRestoreZipPath(null)}
         />
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {notebookDelete !== null && (
         <ConfirmDialog
           title="Delete notebook?"
@@ -665,7 +674,9 @@ export default function App() {
           onClose={() => setNotebookDelete(null)}
         />
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {tagDelete !== null && (
         <ConfirmDialog
           title={`Delete tag #${tagDelete}?`}
@@ -676,7 +687,9 @@ export default function App() {
           onClose={() => setTagDelete(null)}
         />
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {update !== null && (
         <ConfirmDialog
           title={`Update available: ${update.name}`}
@@ -690,7 +703,9 @@ export default function App() {
           onClose={() => { try { localStorage.setItem('devnote:update-dismissed', update.tag); } catch { /* ignore */ } setUpdate(null); }}
         />
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {historyNoteId !== null && (
         <RevisionHistoryDialog
           noteId={historyNoteId}
@@ -699,6 +714,7 @@ export default function App() {
           onClose={() => setHistoryNoteId(null)}
         />
       )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {telescopeOpen && (
@@ -710,6 +726,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
       {prefsOpen && (
         <PreferencesDialog
           settings={settings}
@@ -749,7 +766,9 @@ export default function App() {
           onClose={() => setPrefsOpen(false)}
         />
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {templatePickerOpen && (
         <TemplatePicker
           templates={allTemplates}
@@ -762,6 +781,7 @@ export default function App() {
           onClose={() => setTemplatePickerOpen(false)}
         />
       )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {notice !== null && (
