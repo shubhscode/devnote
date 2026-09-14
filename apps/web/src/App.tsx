@@ -12,6 +12,7 @@ import { isMod, isTypingTarget, modLabel } from './lib/keys';
 import { isTauri } from './lib/mirror';
 import Sidebar from './components/Sidebar';
 import NoteList from './components/NoteList';
+import PaneResizer from './components/PaneResizer';
 import Editor, { type ViewMode } from './components/Editor';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import MoveToNotebookDialog from './components/MoveToNotebookDialog';
@@ -63,6 +64,8 @@ export default function App() {
   const mirrorDir = useDevnote((s) => s.mirrorDir);
   const remoteUrl = useDevnote((s) => s.remoteUrl);
   const syncBusy = useDevnote((s) => s.syncBusy);
+  const sidebarWidth = useDevnote((s) => s.settings.sidebarWidth);
+  const listWidth = useDevnote((s) => s.settings.listWidth);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [listOpen, setListOpen] = useState(true);
   // Narrow windows start with the sidebar hidden (never auto-reopened).
@@ -499,6 +502,16 @@ export default function App() {
         />
         </ErrorBoundary>
       )}
+      {sidebarOpen && !focusMode && listOpen && (
+        <PaneResizer
+          label="Resize sidebar"
+          value={sidebarWidth}
+          min={180}
+          max={420}
+          onChange={(w) => updateSettings({ sidebarWidth: w })}
+          onReset={() => updateSettings({ sidebarWidth: 240 })}
+        />
+      )}
 
       {!focusMode && (
       <ErrorBoundary name="note list">
@@ -528,6 +541,16 @@ export default function App() {
       </div>
       )}
       </ErrorBoundary>
+      )}
+      {!focusMode && listOpen && (
+        <PaneResizer
+          label="Resize note list"
+          value={listWidth}
+          min={240}
+          max={520}
+          onChange={(w) => updateSettings({ listWidth: w })}
+          onReset={() => updateSettings({ listWidth: 320 })}
+        />
       )}
 
       <ErrorBoundary name="editor">

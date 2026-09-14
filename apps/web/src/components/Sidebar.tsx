@@ -44,6 +44,7 @@ export default function Sidebar(props: SidebarProps) {
   const focusWorkspace = useDevnote((s) => s.focusWorkspace);
   const clearWorkspace = useDevnote((s) => s.clearWorkspace);
   const syncNow = useDevnote((s) => s.syncNow);
+  const sidebarWidth = useDevnote((s) => s.settings.sidebarWidth);
 
   const scopeIds = useMemo(() => workspaceScopeIdsFor(notebooks, workspaceId), [notebooks, workspaceId]);
   const scopedNotes = useMemo(
@@ -243,7 +244,7 @@ export default function Sidebar(props: SidebarProps) {
   };
 
   return (
-    <aside className="flex w-60 flex-col overflow-y-auto border-r border-[var(--border)] bg-[var(--bg-sidebar)]">
+    <aside style={{ width: sidebarWidth }} className="flex shrink-0 flex-col overflow-y-auto border-r border-[var(--border)] bg-[var(--bg-sidebar)]">
       <TrafficLights />
       {workspacePath !== null && (
         <div className="flex items-center gap-1.5 border-b border-[var(--border)] bg-[var(--accent-soft)] px-2 py-1.5">

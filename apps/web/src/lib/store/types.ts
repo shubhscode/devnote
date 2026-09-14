@@ -14,6 +14,10 @@ export interface Settings {
   fontSize: number;
   /** Note-list order (search results always rank by relevance). */
   noteSort: NoteSortKey;
+  /** Sidebar width, px (clamped 180–420). */
+  sidebarWidth: number;
+  /** Note-list width, px (clamped 240–520). */
+  listWidth: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -22,6 +26,8 @@ export const DEFAULT_SETTINGS: Settings = {
   wordWrap: true,
   fontSize: 13.5,
   noteSort: 'updated',
+  sidebarWidth: 240,
+  listWidth: 320,
 };
 
 export type Selection =

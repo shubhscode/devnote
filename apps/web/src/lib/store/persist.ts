@@ -49,6 +49,8 @@ export function loadSettings(adapter: StorageAdapter): Loaded<Settings> {
         wordWrap: typeof p.wordWrap === 'boolean' ? p.wordWrap : fallback.wordWrap,
         fontSize: typeof p.fontSize === 'number' ? Math.min(18, Math.max(11, p.fontSize)) : fallback.fontSize,
         noteSort: p.noteSort === 'created' || p.noteSort === 'title' ? p.noteSort : 'updated',
+        sidebarWidth: typeof p.sidebarWidth === 'number' ? Math.min(420, Math.max(180, p.sidebarWidth)) : fallback.sidebarWidth,
+        listWidth: typeof p.listWidth === 'number' ? Math.min(520, Math.max(240, p.listWidth)) : fallback.listWidth,
       },
       corrupted: false,
     };
