@@ -527,22 +527,12 @@ export default function App() {
 
       <ErrorBoundary name="editor">
       <Editor
-        note={store.activeNote}
-        notebooks={store.notebooks}
-        tagSuggestions={store.tags.filter((t) => !(store.activeNote?.tags.includes(t) ?? false))}
         dark={dark}
         mode={viewMode}
         onModeChange={setViewMode}
         viewRef={editorViewRef}
-        fontSize={store.settings.fontSize}
-        wrap={store.settings.wordWrap}
-        externalBody={store.externalBodyWrite}
-        onCommit={store.commitPatch}
-        onNew={store.newNote}
         onChooseTemplate={() => setTemplatePickerOpen(true)}
         onOpenHistory={() => { if (store.activeNoteId !== null) setHistoryNoteId(store.activeNoteId); }}
-        onDuplicate={(id) => store.duplicate([id])}
-        onTrash={(id) => store.trash([id])}
         onRestore={(id) => setRestoreIds([id])}
         onDeleteForever={(id) => confirmDestroy([id])}
       />

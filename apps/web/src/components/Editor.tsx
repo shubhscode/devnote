@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Archive, Copy, Edit as EditIcon, Eye, History,
   Layout, More, Pin, Plus, Trash, X,
 } from 'reicon-react';
-import { notebookPath } from '@devnote/core';
-import type { Note, Notebook, NoteStatus } from '@devnote/core';
+import { allTags, notebookPath } from '@devnote/core';
 import type { EditorView } from '@devnote/editor';
 import type { MutableRefObject } from 'react';
+import { useDevnote } from '../lib/store';
 import { StatusSelect } from './StatusPill';
 import EditorBubbleMenu from './EditorBubbleMenu';
 import CodeEditor from './CodeEditor';
@@ -19,24 +19,13 @@ const PreviewView = lazy(() => import('./PreviewView'));
 export type ViewMode = 'edit' | 'preview' | 'split';
 
 interface EditorProps {
-  note: Note | null;
-  notebooks: Notebook[];
-  tagSuggestions: string[];
   dark: boolean;
   mode: ViewMode;
   onModeChange: (m: ViewMode) => void;
-  fontSize: number;
-  wrap: boolean;
   /** Shared EditorView handle (owned by App — Telescope jumps need it too). */
   viewRef: MutableRefObject<EditorView | null>;
-  /** Latest external body write (template/restore); applied to the matching note's view. */
-  externalBody: { noteId: string; body: string; seq: number } | null;
-  onCommit: (id: string, patch: { title?: string; body?: string; tags?: string[]; status?: NoteStatus; pinned?: boolean }) => void;
-  onNew: () => void;
   onChooseTemplate: () => void;
   onOpenHistory: () => void;
-  onDuplicate: (id: string) => void;
-  onTrash: (id: string) => void;
   onRestore: (id: string) => void;
   onDeleteForever: (id: string) => void;
 }
@@ -48,7 +37,24 @@ interface EditorProps {
  * note sorts to top like Apple Notes.)
  */
 export default function Editor(props: EditorProps) {
-  const { note, mode } = props;
+  // Self-subscribed (Track 1.1): the note object is referentially stable
+  // across unrelated store changes, so sidebar/search typing never
+  // re-renders this pane.
+  const note = useDevnote((s) => s.notes.find((n) => n.id === s.activeNoteId) ?? null);
+  const notebooks = useDevnote((s) => s.notebooks);
+  const fontSize = useDevnote((s) => s.settings.fontSize);
+  const wrap = useDevnote((s) => s.settings.wordWrap);
+  const externalBody = useDevnote((s) => s.externalBodyWrite);
+  const commitPatch = useDevnote((s) => s.commitPatch);
+  const newNote = useDevnote((s) => s.newNote);
+  const duplicateNote = useDevnote((s) => s.duplicate);
+  const trashNote = useDevnote((s) => s.trash);
+  const notesForTags = useDevnote((s) => s.notes);
+  const tagSuggestions = useMemo(
+    () => allTags(notesForTags).filter((t) => !(note?.tags.includes(t) ?? false)),
+    [notesForTags, note],
+  );
+  const { mode } = props;
   const [tagInput, setTagInput] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -88,7 +94,7 @@ export default function Editor(props: EditorProps) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-3 opacity-60">
         <p className="text-sm">No note selected</p>
-        <button className="flex items-center gap-1.5 rounded bg-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent-fg)] hover:opacity-90" onClick={props.onNew}>
+        <button className="flex items-center gap-1.5 rounded bg-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent-fg)] hover:opacity-90" onClick={newNote}>
           <Plus size={15} /> New note
         </button>
       </main>
@@ -101,7 +107,7 @@ export default function Editor(props: EditorProps) {
       setTagInput('');
       return;
     }
-    props.onCommit(note.id, { tags: [...note.tags, t] });
+    commitPatch(note.id, { tags: [...note.tags, t] });
     setTagInput('');
   };
 
@@ -123,9 +129,9 @@ export default function Editor(props: EditorProps) {
       )}
 
       <div className="flex items-center gap-1 border-b border-[var(--border)] px-2 py-1.5">
-        <span className="truncate px-2 text-xs opacity-50">{notebookPath(props.notebooks, note.notebookId)}</span>
+        <span className="truncate px-2 text-xs opacity-50">{notebookPath(notebooks, note.notebookId)}</span>
         <span className="ml-auto" />
-        <button className={fmtBtn} title={note.pinned ? 'Unpin' : 'Pin to top'} onClick={() => props.onCommit(note.id, { pinned: !note.pinned })}>
+        <button className={fmtBtn} title={note.pinned ? 'Unpin' : 'Pin to top'} onClick={() => commitPatch(note.id, { pinned: !note.pinned })}>
           <Pin size={15} weight={note.pinned ? 'Filled' : 'Outline'} className={note.pinned ? 'text-[var(--accent)]' : 'opacity-60'} />
         </button>
         <button className={fmtBtn} title="Editor only (mod+E)" onClick={() => props.onModeChange('edit')}>
@@ -153,7 +159,7 @@ export default function Editor(props: EditorProps) {
               <button
                 className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 title="Duplicate (mod+D)"
-                onClick={() => { setMenuOpen(false); props.onDuplicate(note.id); }}
+                onClick={() => { setMenuOpen(false); duplicateNote([note.id]); }}
               >
                 <Copy size={14} className="opacity-70" /> Duplicate
               </button>
@@ -161,7 +167,7 @@ export default function Editor(props: EditorProps) {
                 <button
                   className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
                   title="Move to trash (mod+Backspace)"
-                  onClick={() => { setMenuOpen(false); props.onTrash(note.id); }}
+                  onClick={() => { setMenuOpen(false); trashNote([note.id]); }}
                 >
                   <Trash size={14} className="opacity-70" /> Move to trash
                 </button>
@@ -173,7 +179,7 @@ export default function Editor(props: EditorProps) {
 
       <input
         value={note.title}
-        onChange={(e) => props.onCommit(note.id, { title: e.target.value })}
+        onChange={(e) => commitPatch(note.id, { title: e.target.value })}
         placeholder="Untitled"
         disabled={note.trashed}
         className="border-b border-[var(--border)] bg-transparent px-4 py-3 text-lg font-semibold outline-none"
@@ -182,14 +188,14 @@ export default function Editor(props: EditorProps) {
       <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--border)] px-4 py-2">
         <StatusSelect
           value={note.status}
-          onChange={(s) => props.onCommit(note.id, { status: s })}
+          onChange={(s) => commitPatch(note.id, { status: s })}
           disabled={note.trashed}
         />
         {note.tags.map((t) => (
           <span key={t} className="flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-xs text-[var(--accent)]">
             #{t}
             {!note.trashed && (
-              <button title={`Remove ${t}`} onClick={() => props.onCommit(note.id, { tags: note.tags.filter((x) => x !== t) })}>
+              <button title={`Remove ${t}`} onClick={() => commitPatch(note.id, { tags: note.tags.filter((x) => x !== t) })}>
                 <X size={12} />
               </button>
             )}
@@ -207,7 +213,7 @@ export default function Editor(props: EditorProps) {
               className="w-28 bg-transparent px-1 py-0.5 text-xs outline-none"
             />
             <datalist id="tag-suggestions">
-              {props.tagSuggestions.map((t) => (
+              {tagSuggestions.map((t) => (
                 <option key={t} value={t} />
               ))}
             </datalist>
@@ -231,12 +237,12 @@ export default function Editor(props: EditorProps) {
             <CodeEditor
               docKey={note.id}
               initialDoc={note.body}
-              external={props.externalBody?.noteId === note.id ? props.externalBody : null}
+              external={externalBody?.noteId === note.id ? externalBody : null}
               dark={props.dark}
-              fontSize={props.fontSize}
-              wrap={props.wrap}
+              fontSize={fontSize}
+              wrap={wrap}
               onDocChange={(doc) => {
-                if (doc !== note.body) props.onCommit(note.id, { body: doc });
+                if (doc !== note.body) commitPatch(note.id, { body: doc });
               }}
               viewRef={viewRef}
               onReady={() => setViewTick((t) => t + 1)}
