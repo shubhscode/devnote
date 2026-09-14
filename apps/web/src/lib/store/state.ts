@@ -1,16 +1,25 @@
 import type { SetStateAction } from 'react';
 import { create } from 'zustand';
 import {
+  BUILTIN_TEMPLATES,
+  applyTemplate,
+  createCustomTemplate,
   createNote,
   createNotebook,
+  deleteCustomTemplate,
   deleteNotebook,
   deleteNotesPermanently,
   descendantIds,
+  duplicateAsCustom,
   duplicateNote,
+  markTemplateUsed,
   mergeTags as mergeTagNotes,
   moveNotes as moveNotesCore,
   noteFilename,
   noteToMarkdown,
+  parseTemplateBody,
+  planExport,
+  planImport,
   pushRevision,
   renameNotebook,
   renameTag as renameTagNotes,
@@ -22,10 +31,18 @@ import {
   tagNotes as tagNotesCore,
   trashNotes,
   untagNotes,
+  updateCustomTemplate,
   updateNote,
 } from '@devnote/core';
 import type { Note, Notebook, NoteStatus, StorageAdapter, Template, Revision } from '@devnote/core';
 import type { SyncState } from '@devnote/sync';
+import {
+  classifySyncState,
+  conflictedPaths,
+  parsePorcelain,
+  resolveConflict,
+  syncCommitMessage,
+} from '@devnote/sync';
 import { localStorageAdapter } from '../storage';
 import { loadPersisted } from './persist';
 import { computeVisible } from './select';
@@ -121,6 +138,30 @@ export interface RevActions {
   restoreRevision: (noteId: string, revisionId: string) => void;
 }
 
+export interface TemplateInput {
+  name: string;
+  body: string;
+  description?: string;
+}
+
+/** Templates + settings actions. */
+export interface LibraryActions {
+  createTemplate: (input: TemplateInput) => string | null;
+  updateTemplate: (id: string, patch: { name?: string; body?: string; description?: string }) => void;
+  deleteTemplate: (id: string) => void;
+  duplicateTemplate: (id: string) => string | null;
+  applyTemplateToNote: (templateId: string) => string | null;
+  updateSettings: (patch: Partial<Settings>) => void;
+}
+
+/** File mirror + git sync actions (desktop only; no-ops in browser). */
+export interface SyncActions {
+  exportMirror: () => Promise<void>;
+  importMirror: () => Promise<void>;
+  refreshSyncState: () => Promise<void>;
+  syncNow: () => Promise<void>;
+}
+
 /** Last-keystroke timestamp for the idle revision snapshot. Module-level:
  *  hot path, never rendered. */
 export const editClock = { lastEditAt: 0 };
@@ -143,7 +184,7 @@ function defaultNotebookIdFor(notebooks: Notebook[], settings: Settings): string
 
 export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
   const initial = loadPersisted(adapter);
-  return create<DevnoteState & DataActions & NavActions & RevActions>()((set, get) => {
+  return create<DevnoteState & DataActions & NavActions & RevActions & LibraryActions & SyncActions>()((set, get) => {
     const fail = (e: unknown) => {
       set({ notice: e instanceof Error ? e.message : 'Something went wrong' });
     };
@@ -532,6 +573,254 @@ export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter
           return;
         }
         get().focusWorkspace(id);
+      },
+
+      createTemplate: (input) => {
+        try {
+          const next = createCustomTemplate(get().customTemplates, input);
+          set({ customTemplates: next });
+          return next[next.length - 1]?.id ?? null;
+        } catch (e) {
+          fail(e);
+          return null;
+        }
+      },
+
+      updateTemplate: (id, patch) => {
+        try {
+          set((s) => ({ customTemplates: updateCustomTemplate(s.customTemplates, [...s.customTemplates, ...BUILTIN_TEMPLATES], id, patch) }));
+        } catch (e) {
+          fail(e);
+        }
+      },
+
+      deleteTemplate: (id) => {
+        try {
+          set((s) => ({
+            customTemplates: deleteCustomTemplate(s.customTemplates, [...s.customTemplates, ...BUILTIN_TEMPLATES], id),
+            templateRecents: s.templateRecents.filter((x) => x !== id),
+          }));
+        } catch (e) {
+          fail(e);
+        }
+      },
+
+      duplicateTemplate: (id) => {
+        try {
+          const customs = get().customTemplates;
+          const r = duplicateAsCustom(customs, [...customs, ...BUILTIN_TEMPLATES], id);
+          set({ customTemplates: r.customs });
+          return r.template.id;
+        } catch (e) {
+          fail(e);
+          return null;
+        }
+      },
+
+      /**
+       * Apply a template: fills the active note in place when it's still empty,
+       * otherwise creates a fresh note (template `notebook` wins, then current
+       * notebook, then default). Returns the target note id.
+       */
+      applyTemplateToNote: (templateId) => {
+        const { customTemplates, notes, notebooks, activeNoteId, selection, settings } = get();
+        const all = [...customTemplates, ...BUILTIN_TEMPLATES];
+        const tpl = all.find((t) => t.id === templateId);
+        if (!tpl) {
+          set({ notice: 'Template not found' });
+          return null;
+        }
+        const now = new Date();
+        const current = notes.find((n) => n.id === activeNoteId) ?? null;
+        set((s) => ({ templateRecents: markTemplateUsed(s.templateRecents, templateId) }));
+        if (current !== null && !current.trashed && current.title.trim() === '' && current.body.trim() === '') {
+          const applied = applyTemplate(tpl, { title: '', tags: current.tags, status: current.status }, now);
+          get().snapshotNote(current.id); // in-place fill is a content change — keep history
+          try {
+            set((s) => ({
+              notes: updateNote(s.notes, s.notebooks, current.id, {
+                title: applied.title, body: applied.body, tags: applied.tags, status: applied.status,
+              }),
+            }));
+          } catch (e) {
+            fail(e);
+            return null;
+          }
+          externalWriteSeq.current += 1;
+          set({ externalBodyWrite: { noteId: current.id, body: applied.body, seq: externalWriteSeq.current } });
+          return current.id;
+        }
+        const { config } = parseTemplateBody(tpl.body);
+        let target = defaultNotebookIdFor(notebooks, settings);
+        if (config.notebook) {
+          const found = notebooks.find((n) => n.name.toLowerCase() === config.notebook!.toLowerCase());
+          if (found) target = found.id;
+        } else if (selection.kind === 'notebook') {
+          target = selection.id;
+        }
+        if (target === null) {
+          set({ notice: 'Create a notebook first' });
+          return null;
+        }
+        try {
+          const created = createNote(notes, notebooks, { notebookId: target });
+          const applied = applyTemplate(tpl, { title: '', tags: [], status: 'none' }, now);
+          set({
+            notes: updateNote(created.notes, notebooks, created.note.id, {
+              title: applied.title, body: applied.body, tags: applied.tags, status: applied.status,
+            }),
+            selectedIds: [created.note.id],
+            activeNoteId: created.note.id,
+          });
+          return created.note.id;
+        } catch (e) {
+          fail(e);
+          return null;
+        }
+      },
+
+      updateSettings: (patch) => {
+        set((s) => ({
+          settings: {
+            ...s.settings,
+            ...patch,
+            ...(patch.fontSize !== undefined
+              ? { fontSize: Math.min(18, Math.max(11, patch.fontSize)) }
+              : {}),
+          },
+        }));
+      },
+
+      /** Write all notes to ~/devnote, pruning moved/deleted files. */
+      exportMirror: async () => {
+        try {
+          const { mirrorReadFiles, mirrorSync, mirrorRootPath } = await import('../mirror');
+          const { notes, notebooks } = get();
+          const files = await mirrorReadFiles();
+          const plan = planExport(notes, notebooks, files);
+          await mirrorSync(plan.writes, plan.deletes);
+          set({
+            mirrorDir: await mirrorRootPath(),
+            notice: `Mirror updated: ${plan.writes.length} written, ${plan.deletes.length} removed, ${plan.skipped} unchanged`,
+          });
+        } catch (e) {
+          fail(e);
+        }
+      },
+
+      /** Read ~/devnote into notes (newer-updatedAt wins, never deletes). */
+      importMirror: async () => {
+        try {
+          const { mirrorReadFiles, mirrorSync, mirrorRootPath } = await import('../mirror');
+          const { notes, notebooks } = get();
+          const files = await mirrorReadFiles();
+          const res = planImport(notes, notebooks, files);
+          set({ notes: res.notes, notebooks: res.notebooks });
+          if (res.adoptions.length > 0) {
+            await mirrorSync(res.adoptions.map((a) => ({ path: a.path, content: a.content })), []);
+          }
+          const errs = res.errors.length > 0 ? `, ${res.errors.length} skipped (${res.errors[0]?.message})` : '';
+          set({
+            mirrorDir: await mirrorRootPath(),
+            notice: `Import done: ${res.created} new, ${res.updated} updated${errs}`,
+          });
+        } catch (e) {
+          fail(e);
+        }
+      },
+
+      /** Refresh sync state from git status. */
+      refreshSyncState: async () => {
+        try {
+          const { gitAvailable, gitStatusRaw, gitGetRemote, gitDeviceName } = await import('../sync');
+          const hasGit = await gitAvailable();
+          if (!hasGit) { set({ syncState: 'no-git' }); return; }
+          const dto = await gitStatusRaw();
+          if (!dto.hasRepo) { set({ syncState: 'no-repo' }); return; }
+          const status = parsePorcelain(dto.raw);
+          set({
+            syncState: classifySyncState({ hasGit: dto.hasGit, hasRepo: dto.hasRepo, status }),
+            remoteUrl: await gitGetRemote(),
+            syncDevice: await gitDeviceName(),
+          });
+        } catch (e) {
+          fail(e);
+        }
+      },
+
+      /** Full sync: export → commit → pull → resolve conflicts → push → import. */
+      syncNow: async () => {
+        if (get().syncBusy) return;
+        set({ syncBusy: true });
+        try {
+          const {
+            gitStatusRaw, gitCommitAll, gitPull, gitPush,
+            gitConflictStages, gitAdd, gitFinishMerge,
+          } = await import('../sync');
+          const { mirrorReadFiles, mirrorSync, mirrorRootPath } = await import('../mirror');
+
+          // 1. Export notes to ~/devnote (batched into one Rust call)
+          const { notes, notebooks, syncDevice } = get();
+          const files = await mirrorReadFiles();
+          const exp = planExport(notes, notebooks, files);
+          await mirrorSync(exp.writes.map((w) => ({ path: w.path, content: w.content })), exp.deletes);
+          set({ mirrorDir: await mirrorRootPath() });
+
+          // 2. Stage + commit
+          await gitCommitAll(syncCommitMessage(new Date().toISOString(), syncDevice));
+
+          // 3. Pull (may cause merge conflicts)
+          const pull = await gitPull();
+          if (pull.conflict) {
+            // Resolve: for each conflicted file, pick newer updatedAt, write loser as .conflict-<device>.md
+            const dto = await gitStatusRaw();
+            const status = parsePorcelain(dto.raw);
+            const paths = conflictedPaths(status);
+            const resolved: string[] = [];
+            const conflictWrites: { path: string; content: string }[] = [];
+            for (const p of paths) {
+              const stages = await gitConflictStages(p);
+              if (!stages.ours && !stages.theirs) continue;
+              const now = new Date().toISOString();
+              const resolution = resolveConflict(
+                stages.ours || stages.base || '', stages.theirs || stages.base || '', p, syncDevice, now,
+              );
+              conflictWrites.push({ path: p, content: resolution.resolved });
+              if (resolution.conflict) {
+                conflictWrites.push(resolution.conflict);
+              }
+              resolved.push(p);
+            }
+            if (conflictWrites.length > 0) {
+              await mirrorSync(conflictWrites, []);
+            }
+            if (resolved.length > 0) {
+              await gitAdd(resolved);
+              await gitFinishMerge(syncCommitMessage(new Date().toISOString(), syncDevice));
+            }
+            set({ notice: `Sync done: ${resolved.length} conflict(s) resolved` });
+          } else {
+            // 4. Push
+            const push = await gitPush();
+            if (!push.ok) {
+              set({ notice: `Push failed: ${push.message}` });
+            }
+          }
+
+          // 5. Import back (pull may have brought remote changes, or merge added loser files)
+          const filesAfter = await mirrorReadFiles();
+          const imp = planImport(get().notes, get().notebooks, filesAfter);
+          set({ notes: imp.notes, notebooks: imp.notebooks });
+          if (imp.adoptions.length > 0) {
+            await mirrorSync(imp.adoptions.map((a) => ({ path: a.path, content: a.content })), []);
+          }
+
+          await get().refreshSyncState();
+        } catch (e) {
+          fail(e);
+        } finally {
+          set({ syncBusy: false });
+        }
       },
     };
   });
