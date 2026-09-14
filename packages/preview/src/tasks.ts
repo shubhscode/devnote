@@ -6,18 +6,10 @@ import remarkGfm from 'remark-gfm';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
 import type { ListItem, Root as MdRoot } from 'mdast';
-import type { Element, Root as HtmlRoot } from 'hast';
+import type { Element, Root as HtmlRoot, RootContent } from 'hast';
 
-function isTaskItem(node: Element, parent: unknown): boolean {
-  if (node.tagName !== 'input') return false;
-  const props = node.properties ?? {};
-  // GFM emits disabled checkboxes inside li.task-list-item. Raw-HTML inputs
-  // elsewhere (no task-list-item parent, usually no disabled) are ignored.
-  if (props.type !== 'checkbox' || props.disabled === undefined) return false;
-  if (typeof parent !== 'object' || parent === null) return false;
-  const p = parent as Element;
-  if (p.tagName !== 'li') return false;
-  const cls = p.properties?.className;
+function hasTaskClass(node: Element): boolean {
+  const cls = node.properties?.className;
   const list = Array.isArray(cls) ? cls.map(String) : [];
   return list.includes('task-list-item');
 }
@@ -25,17 +17,28 @@ function isTaskItem(node: Element, parent: unknown): boolean {
 /**
  * rehype plugin: strip `disabled` (so clicks reach the handler) and stamp
  * `data-task-index` in document order. Index matches setTaskChecked's order.
+ * Tracks ancestry (not just the parent) because loose list items nest the
+ * checkbox as `li > p > input`.
  */
 export function indexTaskCheckboxes() {
   return (tree: HtmlRoot): void => {
     let n = 0;
-    visit(tree, 'element', (node: Element, _index, parent) => {
-      if (!isTaskItem(node, parent)) return;
-      const props = { ...(node.properties ?? {}) };
-      delete props.disabled;
-      props.dataTaskIndex = n++;
-      node.properties = props;
-    });
+    const walk = (node: RootContent | HtmlRoot, inTaskItem: boolean): void => {
+      let inside = inTaskItem;
+      if (node.type === 'element') {
+        if (node.tagName === 'li' && hasTaskClass(node)) inside = true;
+        if (node.tagName === 'input' && inside && node.properties?.type === 'checkbox') {
+          const props = { ...(node.properties ?? {}) };
+          delete props.disabled;
+          props.dataTaskIndex = n++;
+          node.properties = props;
+        }
+      }
+      const kids: readonly (RootContent)[] =
+        node.type === 'element' || node.type === 'root' ? node.children : [];
+      for (const child of kids) walk(child, inside);
+    };
+    walk(tree, false);
   };
 }
 
