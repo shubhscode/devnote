@@ -10,6 +10,7 @@ import {
   toggleBullet, toggleCode, toggleFence, toggleItalic, toggleNumbered,
   toggleQuote, toggleCheckTask, type AlertKind, type EditorView,
 } from '@devnote/editor';
+import RowMenu from './RowMenu';
 
 interface Props {
   viewRef: MutableRefObject<EditorView | null>;
@@ -75,18 +76,21 @@ export default function EditorBubbleMenu({ viewRef, active, onAction }: Props) {
     { title: 'Italic (mod+I)', icon: <Italic size={15} />, active: isWrapped(doc, sel.from, sel.to, '*') && !isWrapped(doc, sel.from, sel.to, '**'), run: toggleItalic },
     { title: 'Code', icon: <Code size={15} />, active: isWrapped(doc, sel.from, sel.to, '`'), run: toggleCode },
     { title: 'Link (mod+Shift+K)', icon: <Link size={15} />, active: false, run: insertMarkdownLink },
-    { title: 'Code block', icon: <CodeSquare size={15} />, active: isFencedBlock(doc, sel.from, sel.to), run: toggleFence, separatorBefore: true },
+    { title: 'Task', icon: <ListCheck size={15} />, active: isTaskLines(doc, sel.from, sel.to), run: toggleCheckTask },
+  ];
+  const overflow: ButtonSpec[] = [
+    { title: 'Code block', icon: <CodeSquare size={15} />, active: isFencedBlock(doc, sel.from, sel.to), run: toggleFence },
     { title: 'Bullet list', icon: <UnorderedList size={15} />, active: isLinePrefixed(doc, sel.from, sel.to, '- '), run: toggleBullet },
     { title: 'Numbered list', icon: <OrderedList size={15} />, active: isNumberedLines(doc, sel.from, sel.to), run: toggleNumbered },
     { title: 'Quote', icon: <QuoteUp size={15} />, active: isLinePrefixed(doc, sel.from, sel.to, '> '), run: toggleQuote },
-    { title: 'Task', icon: <ListCheck size={15} />, active: isTaskLines(doc, sel.from, sel.to), run: toggleCheckTask },
-    { title: 'GitHub Alert (NOTE)', icon: <AlertTriangle size={15} />, active: isAlertBlock(doc, sel.from, sel.to), run: (view) => toggleAlert(view, ALERT_KIND), separatorBefore: true },
+    { title: 'GitHub Alert (NOTE)', icon: <AlertTriangle size={15} />, active: isAlertBlock(doc, sel.from, sel.to), run: (view) => toggleAlert(view, ALERT_KIND) },
   ];
+  const click = (run: (view: EditorView) => boolean) => onAction(run);
 
   return (
     <div
       data-testid="bubble-menu"
-      className="fixed z-40 flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-1 shadow-xl"
+      className="group fixed z-40 flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-1 shadow-xl"
       style={{ left, top }}
     >
       {buttons.map((b) => (
@@ -98,13 +102,23 @@ export default function EditorBubbleMenu({ viewRef, active, onAction }: Props) {
             aria-label={b.title}
             // Keep the editor selection (editorcn pattern): no focus steal.
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onAction(b.run)}
+            onClick={() => click(b.run)}
             className={b.active ? BTN_ACTIVE : BTN}
           >
             {b.icon}
           </button>
         </div>
       ))}
+      <span className="mx-1 h-4 w-px bg-[var(--border)]" />
+      <RowMenu
+        label="More formatting"
+        align="right"
+        items={overflow.map((b) => ({
+          title: b.title,
+          icon: b.icon,
+          onSelect: () => click(b.run),
+        }))}
+      />
     </div>
   );
 }

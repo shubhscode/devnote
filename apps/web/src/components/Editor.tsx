@@ -208,6 +208,11 @@ export default function Editor(props: EditorProps) {
 
   const fmtBtn = 'rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800';
   const showEditor = mode === 'edit' || mode === 'split';
+  const MODES = [
+    { id: 'edit' as const, label: 'Edit', title: 'Editor only (mod+E)', icon: <EditIcon size={13} weight={mode === 'edit' ? 'Filled' : 'Outline'} /> },
+    { id: 'split' as const, label: 'Split', title: 'Side by side (mod+P)', icon: <Layout size={13} weight={mode === 'split' ? 'Filled' : 'Outline'} /> },
+    { id: 'preview' as const, label: 'Preview', title: 'Preview only (mod+E)', icon: <Eye size={13} weight={mode === 'preview' ? 'Filled' : 'Outline'} /> },
+  ];
 
   return (
     <main className="flex min-w-0 flex-1 flex-col">
@@ -226,17 +231,23 @@ export default function Editor(props: EditorProps) {
       <div className="flex items-center gap-1 border-b border-[var(--border)] px-2 py-1.5">
         <span className="truncate px-2 text-xs opacity-50">{notebookPath(notebooks, note.notebookId)}</span>
         <span className="ml-auto" />
-        <button className={fmtBtn} title={note.pinned ? 'Unpin' : 'Pin to top'} onClick={() => commitPatch(note.id, { pinned: !note.pinned })}>
+        <div role="radiogroup" aria-label="View mode" className="flex shrink-0 items-center rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              role="radio"
+              aria-checked={mode === m.id}
+              title={m.title}
+              onClick={() => props.onModeChange(m.id)}
+              className={`focus-ring flex items-center gap-1 rounded-md px-2 py-1 text-xs ${mode === m.id ? 'bg-[var(--bg-raised)] font-medium shadow-sm' : 'opacity-60 hover:opacity-100'}`}
+            >
+              {m.icon}
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <button className={`${fmtBtn} focus-ring`} title={note.pinned ? 'Unpin' : 'Pin to top'} aria-label={note.pinned ? 'Unpin note' : 'Pin note to top'} aria-pressed={note.pinned} onClick={() => commitPatch(note.id, { pinned: !note.pinned })}>
           <Pin size={15} weight={note.pinned ? 'Filled' : 'Outline'} className={note.pinned ? 'text-[var(--accent)]' : 'opacity-60'} />
-        </button>
-        <button className={fmtBtn} title="Editor only (mod+E)" onClick={() => props.onModeChange('edit')}>
-          <EditIcon size={15} weight={mode === 'edit' ? 'Filled' : 'Outline'} className="opacity-70" />
-        </button>
-        <button className={fmtBtn} title="Side by side (mod+P)" onClick={() => props.onModeChange('split')}>
-          <Layout size={15} weight={mode === 'split' ? 'Filled' : 'Outline'} className="opacity-70" />
-        </button>
-        <button className={fmtBtn} title="Preview only (mod+E)" onClick={() => props.onModeChange('preview')}>
-          <Eye size={15} weight={mode === 'preview' ? 'Filled' : 'Outline'} className="opacity-70" />
         </button>
         <div className="relative">
           <button
@@ -365,15 +376,17 @@ export default function Editor(props: EditorProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-1 border-b border-[var(--border)] px-4 py-1.5">
-        <button
-          className="rounded px-1 py-0.5 text-xs opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          title={backlinks.length === 0 ? 'No notes link here yet — reference this note with [[title]]' : 'Notes linking here'}
-          onClick={() => setLinksOpen((v) => !v)}
-        >
-          Linked from · {backlinks.length}
-        </button>
-      </div>
+      {backlinks.length > 0 && (
+        <div className="flex items-center gap-1 border-b border-[var(--border)] px-4 py-1.5">
+          <button
+            className="rounded px-1 py-0.5 text-xs opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            title="Notes linking here"
+            onClick={() => setLinksOpen((v) => !v)}
+          >
+            Linked from · {backlinks.length}
+          </button>
+        </div>
+      )}
       {linksOpen && backlinks.length > 0 && (
         <div className="border-b border-[var(--border)] px-4 py-1">
           {backlinks.map((b) => (
