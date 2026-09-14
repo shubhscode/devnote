@@ -15,6 +15,25 @@ if [ ! -d "$SRC" ]; then
   exit 1
 fi
 
+# Ad-hoc seal: Tauri leaves resources unsealed, which Gatekeeper on other
+# Macs reports as "damaged". A local signature seals the bundle so downloads
+# degrade to the milder "unidentified developer" (right-click → Open) flow.
+# (Proper fix: Developer ID + notarization, PLAN.md §6c.)
+codesign --force --deep --sign - "$SRC"
+echo "Ad-hoc signature applied"
+
+# Tauri's DMG is staged before signing, so restage it from the sealed app.
+DMG_DIR="$ROOT/apps/desktop/src-tauri/target/release/bundle/dmg"
+DMG_NAME="DevNote_$(jq -r .version "$ROOT/apps/desktop/src-tauri/tauri.conf.json")_aarch64.dmg"
+STAGE="$(mktemp -d)/dmg"
+mkdir -p "$STAGE"
+cp -R "$SRC" "$STAGE/"
+ln -s /Applications "$STAGE/Applications"
+rm -f "$DMG_DIR/$DMG_NAME"
+hdiutil create -volname "DevNote" -srcfolder "$STAGE" -ov -format UDZO "$DMG_DIR/$DMG_NAME" >/dev/null
+rm -rf "$(dirname "$STAGE")"
+echo "Restaged $DMG_DIR/$DMG_NAME from sealed bundle"
+
 # Quit running instance so the bundle can be replaced (binary name, not product name).
 pkill -x "devnote-desktop" 2>/dev/null || true
 sleep 1
