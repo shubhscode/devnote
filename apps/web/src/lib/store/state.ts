@@ -5,17 +5,20 @@ import {
   createNotebook,
   deleteNotebook,
   deleteNotesPermanently,
+  descendantIds,
   duplicateNote,
   mergeTags as mergeTagNotes,
   moveNotes as moveNotesCore,
   noteFilename,
   noteToMarkdown,
+  pushRevision,
   renameNotebook,
   renameTag as renameTagNotes,
   reorderNotebook as reorderNotebookCore,
   restoreNotes,
   setNotesPinned,
   setNotesStatus,
+  shouldSnapshot,
   tagNotes as tagNotesCore,
   trashNotes,
   untagNotes,
@@ -99,9 +102,36 @@ export interface DataActions {
   toggleScope: () => void;
 }
 
+/** Navigation + history actions. */
+export interface NavActions {
+  navigateTo: (id: string | null) => void;
+  goBack: () => void;
+  goForward: () => void;
+  openNote: (id: string, modClick: boolean) => void;
+  select: (s: Selection) => void;
+  focusWorkspace: (id: string) => void;
+  clearWorkspace: () => void;
+  toggleWorkspace: () => void;
+}
+
+/** Revision snapshot/restore actions. */
+export interface RevActions {
+  snapshotNote: (noteId: string) => void;
+  snapshotIdle: () => void;
+  restoreRevision: (noteId: string, revisionId: string) => void;
+}
+
 /** Last-keystroke timestamp for the idle revision snapshot. Module-level:
  *  hot path, never rendered. */
 export const editClock = { lastEditAt: 0 };
+
+/** Same-tick snapshot dedupe (was `lastSnap` ref). */
+const snapDedupe: { current: { id: string; title: string; body: string } | null } = { current: null };
+
+/** Sequence for external body writes (template apply, revision restore). */
+export const externalWriteSeq = { current: 0 };
+
+const IDLE_SNAPSHOT_MS = 30_000;
 
 function defaultNotebookIdFor(notebooks: Notebook[], settings: Settings): string | null {
   if (settings.defaultNotebookId !== null && notebooks.some((n) => n.id === settings.defaultNotebookId)) {
@@ -113,9 +143,23 @@ function defaultNotebookIdFor(notebooks: Notebook[], settings: Settings): string
 
 export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
   const initial = loadPersisted(adapter);
-  return create<DevnoteState & DataActions>()((set, get) => {
+  return create<DevnoteState & DataActions & NavActions & RevActions>()((set, get) => {
     const fail = (e: unknown) => {
       set({ notice: e instanceof Error ? e.message : 'Something went wrong' });
+    };
+    const snapshotNote = (noteId: string) => {
+      const { notes: ns, revisions: rs } = get();
+      const n = ns.find((x) => x.id === noteId);
+      if (!n || n.trashed) return;
+      const key = { id: noteId, title: n.title, body: n.body };
+      const last = snapDedupe.current;
+      if (last && last.id === key.id && last.title === key.title && last.body === key.body) return;
+      if (!shouldSnapshot(rs, noteId, n.title, n.body)) {
+        snapDedupe.current = key;
+        return;
+      }
+      snapDedupe.current = key;
+      set((s) => ({ revisions: pushRevision(s.revisions, noteId, n.title, n.body) }));
     };
     return {
       notebooks: initial.notebooks,
@@ -361,6 +405,133 @@ export function createDevnoteStore(adapter: StorageAdapter = localStorageAdapter
 
       toggleScope: () => {
         set((s) => ({ scope: s.scope === 'local' ? 'global' : 'local' }));
+      },
+
+      snapshotNote,
+
+      /** Idle trigger (called on an interval): snapshot the active note after 30s quiet. */
+      snapshotIdle: () => {
+        const id = get().activeNoteId;
+        if (id === null) return;
+        if (Date.now() - editClock.lastEditAt < IDLE_SNAPSHOT_MS) return;
+        snapshotNote(id);
+      },
+
+      /** Restore a revision. Pre-restore state is snapshotted first, so restores are undoable. */
+      restoreRevision: (noteId, revisionId) => {
+        const rev = get().revisions.find((r) => r.id === revisionId && r.noteId === noteId);
+        if (!rev) {
+          set({ notice: 'Revision not found' });
+          return;
+        }
+        snapshotNote(noteId);
+        try {
+          set((s) => ({ notes: updateNote(s.notes, s.notebooks, noteId, { title: rev.title, body: rev.body }) }));
+        } catch (e) {
+          fail(e);
+          return;
+        }
+        externalWriteSeq.current += 1;
+        set({
+          externalBodyWrite: { noteId, body: rev.body, seq: externalWriteSeq.current },
+          notice: 'Revision restored — previous version kept in history',
+        });
+      },
+
+      navigateTo: (id) => {
+        const prev = get().activeNoteId;
+        if (prev !== null && prev !== id) {
+          snapshotNote(prev);
+          set((s) => ({ past: [...s.past.slice(-49), prev], future: [] }));
+        }
+        set({ activeNoteId: id });
+      },
+
+      goBack: () => {
+        const cur = get().activeNoteId;
+        if (cur !== null) snapshotNote(cur);
+        const past = get().past;
+        if (past.length === 0) return;
+        const prev = past[past.length - 1];
+        set((s) => ({
+          past: s.past.slice(0, -1),
+          activeNoteId: prev ?? s.activeNoteId,
+          future: s.activeNoteId !== null && prev !== undefined ? [s.activeNoteId, ...s.future] : s.future,
+        }));
+      },
+
+      goForward: () => {
+        const cur = get().activeNoteId;
+        if (cur !== null) snapshotNote(cur);
+        const future = get().future;
+        if (future.length === 0) return;
+        const [next, ...rest] = future;
+        set((s) => ({
+          future: rest,
+          activeNoteId: next ?? s.activeNoteId,
+          past: s.activeNoteId !== null && next !== undefined ? [...s.past.slice(-49), s.activeNoteId] : s.past,
+        }));
+      },
+
+      openNote: (id, modClick) => {
+        const cur = get().activeNoteId;
+        if (cur !== null && cur !== id) snapshotNote(cur);
+        if (modClick) {
+          set((s) => ({
+            selectedIds: s.selectedIds.includes(id) ? s.selectedIds.filter((x) => x !== id) : [...s.selectedIds, id],
+            activeNoteId: id,
+          }));
+        } else {
+          set({ selectedIds: [id] });
+          get().navigateTo(id);
+        }
+      },
+
+      select: (sel) => {
+        const cur = get().activeNoteId;
+        if (cur !== null) snapshotNote(cur);
+        const { notebooks, workspaceId, notes, expanded, settings } = get();
+        // Leaving the workspace clears it — navigating inside keeps it.
+        if (sel.kind !== 'notebook' || workspaceId === null || (sel.id !== workspaceId && !descendantIds(notebooks, workspaceId).includes(sel.id))) {
+          set({ workspaceId: null });
+        }
+        const first = computeVisible(notes, notebooks, sel, expanded, '', 'local', settings.noteSort)[0]?.id ?? null;
+        set({ selection: sel, selectedIds: [], query: '', scope: 'local', activeNoteId: first, past: [], future: [] });
+      },
+
+      /** Focus a notebook as workspace: sidebar scopes to its subtree. */
+      focusWorkspace: (id) => {
+        const { notebooks, notes, expanded, settings } = get();
+        if (!notebooks.some((n) => n.id === id)) {
+          set({ notice: 'Notebook not found' });
+          return;
+        }
+        const cur = get().activeNoteId;
+        if (cur !== null) snapshotNote(cur);
+        const sel: Selection = { kind: 'notebook', id };
+        const first = computeVisible(notes, notebooks, sel, expanded, '', 'local', settings.noteSort)[0]?.id ?? null;
+        set({ workspaceId: id, selection: sel, selectedIds: [], query: '', scope: 'local', activeNoteId: first, past: [], future: [] });
+      },
+
+      clearWorkspace: () => {
+        set({ workspaceId: null });
+      },
+
+      /** Toggle workspace for the selected notebook (else the active note's). */
+      toggleWorkspace: () => {
+        const { workspaceId, selection, notes, activeNoteId } = get();
+        if (workspaceId !== null) {
+          set({ workspaceId: null });
+          return;
+        }
+        const id = selection.kind === 'notebook'
+          ? selection.id
+          : notes.find((n) => n.id === activeNoteId && !n.trashed)?.notebookId ?? null;
+        if (id === null) {
+          set({ notice: 'Select a notebook first' });
+          return;
+        }
+        get().focusWorkspace(id);
       },
     };
   });

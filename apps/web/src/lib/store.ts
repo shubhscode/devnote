@@ -62,7 +62,7 @@ import {
 } from './store/persist';
 import type { PersistedState } from './store/persist';
 import { computeVisible, filterBySelectionDirect } from './store/select';
-import { editClock, getDevnoteStore, setStoreState } from './store/state';
+import { editClock, externalWriteSeq, getDevnoteStore, setStoreState } from './store/state';
 import type { SearchScope, Selection, Settings } from './store/types';
 
 export type { TreeNode };
@@ -70,8 +70,6 @@ export type { PersistedState, SearchScope, Selection, Settings };
 export { computeVisible, loadPersisted };
 export { DEFAULT_SETTINGS } from './store/types';
 export type { ThemeId, ThemeMode } from './store/types';
-
-const IDLE_SNAPSHOT_MS = 30_000;
 
 export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
   const store = useMemo(() => getDevnoteStore(adapter), [adapter]);
@@ -124,13 +122,13 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
     // Never lose the trailing debounced write on tab close.
     const flush = () => {
       try {
-        const cur = live.current;
+        const cur = store.getState();
         adapter.setItem(STORAGE_KEY, JSON.stringify({ notebooks: cur.notebooks, notes: cur.notes }));
       } catch { /* ignore */ }
     };
     window.addEventListener('pagehide', flush);
     return () => window.removeEventListener('pagehide', flush);
-  }, [adapter]);
+  }, [adapter, store]);
 
   const customTemplates = store((s) => s.customTemplates);
   const templateRecents = store((s) => s.templateRecents);
@@ -159,20 +157,14 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
     }));
   }, []);
 
-  // Fresh-state refs so snapshot helpers never close over stale state.
-  const live = useRef({ notes: initial.notes, notebooks: initial.notebooks, revisions: initial.revisions });
-  live.current = { notes, notebooks, revisions };
-  const activeIdRef = useRef<string | null>(initial.notes[0]?.id ?? null);
-  useEffect(() => {
-    activeIdRef.current = activeNoteId;
-  }, [activeNoteId]);
-  const lastSnap = useRef<{ id: string; title: string; body: string } | null>(null);
-
   // External body writes (template apply, revision restore): the editor view
   // can't distinguish these from its own keystrokes, so they travel with a
   // sequence number the CodeMirror host applies explicitly.
-  const [externalBodyWrite, setExternalBodyWrite] = useState<{ noteId: string; body: string; seq: number } | null>(null);
-  const externalSeq = useRef(0);
+  const externalBodyWrite = store((s) => s.externalBodyWrite);
+  const setExternalBodyWrite = useCallback(
+    (u: SetStateAction<{ noteId: string; body: string; seq: number } | null>) => setStoreState(store, 'externalBodyWrite', u),
+    [store],
+  );
 
   useEffect(() => {
     try {
@@ -236,49 +228,6 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
     return () => window.removeEventListener('storage', onStorage);
   }, [adapter]);
 
-  /** Snapshot a note if its content differs from its newest revision. Deduped per content. */
-  const snapshotNote = useCallback((noteId: string) => {
-    const { notes: ns, revisions: rs } = live.current;
-    const n = ns.find((x) => x.id === noteId);
-    if (!n || n.trashed) return;
-    const key = { id: noteId, title: n.title, body: n.body };
-    const last = lastSnap.current;
-    if (last && last.id === key.id && last.title === key.title && last.body === key.body) return;
-    if (!shouldSnapshot(rs, noteId, n.title, n.body)) {
-      lastSnap.current = key;
-      return;
-    }
-    lastSnap.current = key;
-    setRevisions((prev) => pushRevision(prev, noteId, n.title, n.body));
-  }, []);
-
-  /** Idle trigger (called on an interval): snapshot the active note after 30s quiet. */
-  const snapshotIdle = useCallback(() => {
-    const id = activeIdRef.current;
-    if (id === null) return;
-    if (Date.now() - editClock.lastEditAt < IDLE_SNAPSHOT_MS) return;
-    snapshotNote(id);
-  }, [snapshotNote]);
-
-  /** Restore a revision. Pre-restore state is snapshotted first, so restores are undoable. */
-  const restoreRevision = useCallback((noteId: string, revisionId: string) => {
-    const rev = live.current.revisions.find((r) => r.id === revisionId && r.noteId === noteId);
-    if (!rev) {
-      setNotice('Revision not found');
-      return;
-    }
-    snapshotNote(noteId);
-    try {
-      setNotes((ns) => updateNote(ns, notebooks, noteId, { title: rev.title, body: rev.body }));
-    } catch (e) {
-      fail(e);
-      return;
-    }
-    externalSeq.current += 1;
-    setExternalBodyWrite({ noteId, body: rev.body, seq: externalSeq.current });
-    setNotice('Revision restored — previous version kept in history');
-  }, [notebooks, snapshotNote, fail]);
-
   const allTemplates = useMemo(
     () => [...customTemplates, ...BUILTIN_TEMPLATES],
     [customTemplates],
@@ -329,111 +278,6 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
     () => notes.find((n) => n.id === activeNoteId) ?? null,
     [notes, activeNoteId],
   );
-
-  const navigateTo = useCallback((id: string | null) => {
-    const prev = activeIdRef.current;
-    if (prev !== null && prev !== id) {
-      snapshotNote(prev);
-      setPast((p) => [...p.slice(-49), prev]);
-      setFuture([]);
-    }
-    setActiveNoteId(id);
-  }, [snapshotNote]);
-
-  const goBack = useCallback(() => {
-    const cur = activeIdRef.current;
-    if (cur !== null) snapshotNote(cur);
-    setPast((p) => {
-      if (p.length === 0) return p;
-      const prev = p[p.length - 1];
-      setActiveNoteId((c) => {
-        if (c !== null && prev !== undefined) setFuture((f) => [c, ...f]);
-        return prev ?? c;
-      });
-      return p.slice(0, -1);
-    });
-  }, [snapshotNote]);
-
-  const goForward = useCallback(() => {
-    const cur = activeIdRef.current;
-    if (cur !== null) snapshotNote(cur);
-    setFuture((f) => {
-      if (f.length === 0) return f;
-      const [next, ...rest] = f;
-      setActiveNoteId((c) => {
-        if (c !== null && next !== undefined) setPast((p) => [...p.slice(-49), c]);
-        return next ?? c;
-      });
-      return rest;
-    });
-  }, [snapshotNote]);
-
-  const openNote = useCallback((id: string, modClick: boolean) => {
-    const cur = activeIdRef.current;
-    if (cur !== null && cur !== id) snapshotNote(cur);
-    if (modClick) {
-      setSelectedIds((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-      setActiveNoteId(id);
-    } else {
-      setSelectedIds([id]);
-      navigateTo(id);
-    }
-  }, [navigateTo, snapshotNote]);
-
-  const select = useCallback((s: Selection) => {
-    const cur = activeIdRef.current;
-    if (cur !== null) snapshotNote(cur);
-    // Leaving the workspace clears it — navigating inside keeps it.
-    if (s.kind !== 'notebook' || workspaceId === null || (s.id !== workspaceId && !descendantIds(notebooks, workspaceId).includes(s.id))) {
-      setWorkspaceId(null);
-    }
-    setSelection(s);
-    setSelectedIds([]);
-    setQuery('');
-    setScope('local');
-    setActiveNoteId(computeVisible(notes, notebooks, s, expanded, '', 'local', settings.noteSort)[0]?.id ?? null);
-    setPast([]);
-    setFuture([]);
-  }, [notes, notebooks, expanded, snapshotNote, workspaceId, settings.noteSort]);
-
-  /** Focus a notebook as workspace: sidebar scopes to its subtree. */
-  const focusWorkspace = useCallback((id: string) => {
-    if (!notebooks.some((n) => n.id === id)) {
-      setNotice('Notebook not found');
-      return;
-    }
-    const cur = activeIdRef.current;
-    if (cur !== null) snapshotNote(cur);
-    const s: Selection = { kind: 'notebook', id };
-    setWorkspaceId(id);
-    setSelection(s);
-    setSelectedIds([]);
-    setQuery('');
-    setScope('local');
-    setActiveNoteId(computeVisible(notes, notebooks, s, expanded, '', 'local', settings.noteSort)[0]?.id ?? null);
-    setPast([]);
-    setFuture([]);
-  }, [notes, notebooks, expanded, snapshotNote, fail, settings.noteSort]);
-
-  const clearWorkspace = useCallback(() => {
-    setWorkspaceId(null);
-  }, []);
-
-  /** Toggle workspace for the selected notebook (else the active note's). */
-  const toggleWorkspace = useCallback(() => {
-    if (workspaceId !== null) {
-      setWorkspaceId(null);
-      return;
-    }
-    const id = selection.kind === 'notebook'
-      ? selection.id
-      : notes.find((n) => n.id === activeNoteId && !n.trashed)?.notebookId ?? null;
-    if (id === null) {
-      setNotice('Select a notebook first');
-      return;
-    }
-    focusWorkspace(id);
-  }, [workspaceId, selection, notes, activeNoteId, focusWorkspace]);
 
   // ---------- file mirror + git sync (Phase 3a/3b, desktop only) ----------
 
@@ -629,6 +473,7 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
    * notebook, then default). Returns the target note id.
    */
   const applyTemplateToNote = useCallback((templateId: string): string | null => {
+    const snapshot = storeActions.snapshotNote;
     const all = [...customTemplates, ...BUILTIN_TEMPLATES];
     const tpl = all.find((t) => t.id === templateId);
     if (!tpl) {
@@ -640,7 +485,7 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
     setTemplateRecents((r) => markTemplateUsed(r, templateId));
     if (current !== null && !current.trashed && current.title.trim() === '' && current.body.trim() === '') {
       const applied = applyTemplate(tpl, { title: '', tags: current.tags, status: current.status }, now);
-      snapshotNote(current.id); // in-place fill is a content change — keep history
+      snapshot(current.id); // in-place fill is a content change — keep history
       try {
         setNotes((ns) => updateNote(ns, notebooks, current.id, {
           title: applied.title, body: applied.body, tags: applied.tags, status: applied.status,
@@ -649,8 +494,8 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
         fail(e);
         return null;
       }
-      externalSeq.current += 1;
-      setExternalBodyWrite({ noteId: current.id, body: applied.body, seq: externalSeq.current });
+      externalWriteSeq.current += 1;
+      setExternalBodyWrite({ noteId: current.id, body: applied.body, seq: externalWriteSeq.current });
       return current.id;
     }
     const { config } = parseTemplateBody(tpl.body);
@@ -678,13 +523,18 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
       fail(e);
       return null;
     }
-  }, [customTemplates, notes, notebooks, activeNoteId, selection, defaultNotebookId, snapshotNote, fail]);
+  }, [customTemplates, notes, notebooks, activeNoteId, selection, defaultNotebookId, storeActions, fail]);
 
   return {
     notebooks, notes, tree, counts, tags, trashedCount, defaultNotebookId,
     selection, activeNoteId, activeNote, selectedIds, query, scope, expanded,
     past, future, notice, visibleNotes, exclusionsOnly,
-    setQuery, setScope, setNotice, select, openNote, navigateTo, goBack, goForward,
+    setQuery, setScope, setNotice,
+    select: storeActions.select,
+    openNote: storeActions.openNote,
+    navigateTo: storeActions.navigateTo,
+    goBack: storeActions.goBack,
+    goForward: storeActions.goForward,
     newNote: storeActions.newNote,
     commitPatch: storeActions.commitPatch,
     duplicate: storeActions.duplicate,
@@ -704,13 +554,19 @@ export function useDevnoteStore(adapter: StorageAdapter = localStorageAdapter) {
     removeNotebook: storeActions.removeNotebook,
     reorderNotebook: storeActions.reorderNotebook,
     toggleExpand: storeActions.toggleExpand,
-    workspaceId, focusWorkspace, clearWorkspace, toggleWorkspace,
+    workspaceId,
+    focusWorkspace: storeActions.focusWorkspace,
+    clearWorkspace: storeActions.clearWorkspace,
+    toggleWorkspace: storeActions.toggleWorkspace,
     renameTag: storeActions.renameTag,
     mergeTags: storeActions.mergeTags,
     deleteTag: storeActions.deleteTag,
     allTemplates, templateRecents, externalBodyWrite, revisions, settings, mirrorDir,
     createTemplate, updateTemplate, deleteTemplate, duplicateTemplate, applyTemplateToNote,
-    snapshotNote, snapshotIdle, restoreRevision, updateSettings,
+    snapshotNote: storeActions.snapshotNote,
+    snapshotIdle: storeActions.snapshotIdle,
+    restoreRevision: storeActions.restoreRevision,
+    updateSettings,
     exportMirror, importMirror,
     syncState, syncDevice, remoteUrl, syncBusy, syncNow, refreshSyncState,
   };
