@@ -7,3 +7,5 @@ export * from './table';
 export * from './complete';
 export * from './codeblock';
 export * from './links';
+export * from './paste';
+export * from './lint';

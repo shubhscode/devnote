@@ -18,10 +18,14 @@ import { languages } from '@codemirror/language-data';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import { EditorView, drawSelection, dropCursor, highlightActiveLine, keymap, lineNumbers } from '@codemirror/view';
+import { linter, type Diagnostic } from '@codemirror/lint';
+import { search, searchKeymap } from '@codemirror/search';
 import { tags as hlTags } from '@lezer/highlight';
 import { codeBlockBox } from './codeblock';
 import { codeCompleter, inCodeBlock } from './complete';
 import { linkCompleter } from './links';
+import { markdownLint } from './lint';
+import { htmlToMarkdown, pasteUrlEdit } from './paste';
 import { insertLink, toggleAlertBlock, toggleFenceBlock, toggleLinePrefix, toggleOrdered, toggleTask, toggleWrap, type AlertKind, type Edit } from './text';
 import { filterSlashItems, type SlashItem } from './slash';
 import { advanceCell, continueTableRow, isTableRow, type TableEdit } from './table';
@@ -217,7 +221,52 @@ export function markdownKeymap(): Extension {
     ...closeBracketsKeymap,
     ...defaultKeymap,
     ...historyKeymap,
+    ...searchKeymap,
   ]);
+}
+
+/** Whitespace + fence warnings as @codemirror/lint diagnostics. */
+export function markdownLinter(): Extension {
+  return linter((view) =>
+    markdownLint(view.state.doc.toString()).map(
+      (h): Diagnostic => ({ from: h.from, to: h.to, severity: 'warning', message: h.message }),
+    ),
+  );
+}
+
+/**
+ * Paste handler: URL over selection → link; rich HTML → Markdown;
+ * otherwise false (CodeMirror pastes plain).
+ */
+function pasteHandler(): Extension {
+  return EditorView.domEventHandlers({
+    paste(event, view) {
+      const dt = event.clipboardData;
+      if (!dt) return false;
+      const text = dt.getData('text/plain');
+      const html = dt.getData('text/html');
+      const sel = view.state.selection.main;
+      const link = pasteUrlEdit(view.state.doc.toString(), sel.from, sel.to, text);
+      if (link) {
+        event.preventDefault();
+        view.dispatch({
+          changes: { from: link.from, to: link.to, insert: link.insert },
+          selection: { anchor: link.selStart, head: link.selEnd },
+        });
+        return true;
+      }
+      if (html !== '') {
+        event.preventDefault();
+        const md = htmlToMarkdown(html);
+        view.dispatch({
+          changes: { from: sel.from, to: sel.to, insert: md },
+          selection: { anchor: sel.from + md.length },
+        });
+        return true;
+      }
+      return false;
+    },
+  });
 }
 
 function buildTheme(dark: boolean, fontSize: number): Extension {
@@ -404,6 +453,9 @@ export function createEditorState(doc: string, dark: boolean, prefs?: Partial<Ed
       codeBlockBox(),
       markdownKeymap(),
       slashCommands(),
+      search({ top: true }),
+      markdownLinter(),
+      pasteHandler(),
       themeCompartment.of(buildTheme(dark, fontSize)),
     ],
   });
