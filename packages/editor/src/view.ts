@@ -383,6 +383,60 @@ function buildTheme(dark: boolean, fontSize: number): Extension {
         textOverflow: 'ellipsis',
         fontStyle: 'normal',
       },
+      // Find/replace panel: same floating-card language as the menus.
+      '.cm-panel.cm-search': {
+        backgroundColor: 'var(--bg-raised)',
+        borderBottom: '1px solid var(--border)',
+        color: 'var(--fg)',
+        fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+        fontSize: '12.5px',
+        padding: '8px 10px',
+      },
+      '.cm-panel.cm-search input.cm-textfield': {
+        backgroundColor: 'var(--bg-sunken)',
+        border: '1px solid var(--border)',
+        borderRadius: '6px',
+        color: 'var(--fg)',
+        padding: '4px 8px',
+        fontSize: '12.5px',
+      },
+      '.cm-panel.cm-search input.cm-textfield:focus': {
+        outline: 'none',
+        borderColor: 'var(--accent)',
+      },
+      '.cm-panel.cm-search button.cm-button': {
+        backgroundColor: 'transparent',
+        border: '1px solid var(--border)',
+        borderRadius: '6px',
+        color: 'var(--fg)',
+        padding: '3px 10px',
+        fontSize: '12px',
+        textTransform: 'none',
+      },
+      '.cm-panel.cm-search button.cm-button:hover': {
+        backgroundColor: 'var(--accent-soft)',
+      },
+      '.cm-panel.cm-search label': {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        opacity: '0.75',
+        marginLeft: '8px',
+      },
+      '.cm-panel.cm-search input[type=checkbox]': {
+        accentColor: 'var(--accent)',
+      },
+      // Search hits: soft wash for matches, accent fill for the current one.
+      '.cm-searchMatch': {
+        backgroundColor: 'var(--accent-soft)',
+        borderRadius: '3px',
+        outline: '1px solid var(--accent)',
+      },
+      '.cm-searchMatch-selected': {
+        backgroundColor: 'var(--accent)',
+        color: 'var(--accent-fg)',
+        borderRadius: '3px',
+      },
     },
     { dark },
   );

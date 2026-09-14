@@ -29,3 +29,26 @@ test('default notebook applies to new notes', async ({ page }) => {
   await page.keyboard.press(`${mod}+n`);
   await expect(page.getByText('Projects / devnote').first()).toBeVisible();
 });
+
+test('shortcut filter narrows the list', async ({ page }) => {
+  await page.getByTitle('Preferences (mod+,)').click();
+  await page.getByText('Shortcuts').click();
+  await expect(page.getByText('25 of 25 commands')).toBeVisible();
+  await page.getByLabel('Filter shortcuts').fill('trash');
+  await expect(page.getByText('1 of 25 commands')).toBeVisible();
+  await expect(page.getByText('No shortcuts match')).toHaveCount(0);
+  await page.getByLabel('Filter shortcuts').fill('zzz-nope');
+  await expect(page.getByText('No shortcuts match')).toBeVisible();
+});
+
+test('note-list sort default applies and persists', async ({ page }) => {
+  await page.getByTitle('Preferences (mod+,)').click();
+  await page.getByText('Editing').click();
+  await page.getByText('Title A–Z').click();
+  await page.keyboard.press('Escape');
+  // Title order: Roadmap before Welcome.
+  await expect(page.locator('.note-row-in').first()).toContainText('Roadmap');
+  await page.reload();
+  // Still title-sorted after reload.
+  await expect(page.locator('.note-row-in').first()).toContainText('Roadmap');
+});
