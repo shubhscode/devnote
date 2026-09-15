@@ -578,9 +578,8 @@ export default function App() {
         dark={dark}
         mode={viewMode}
         onModeChange={setViewMode}
-        listOpen={listOpen}
-        onToggleList={() => setListOpen((v) => !v)}
-        showListToggle={!focusMode}
+        focusActive={focusMode}
+        onToggleFocus={() => setFocusMode((v) => !v)}
         viewRef={editorViewRef}
         onRequestJump={jumpToPos}
         onChooseTemplate={() => setTemplatePickerOpen(true)}

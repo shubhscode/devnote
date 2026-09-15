@@ -25,11 +25,9 @@ interface EditorProps {
   dark: boolean;
   mode: ViewMode;
   onModeChange: (m: ViewMode) => void;
-  /** Note-list visibility + toggle (button lives top-left of this pane). */
-  listOpen: boolean;
-  onToggleList: () => void;
-  /** Hidden in distraction-free mode, where the list is force-hidden. */
-  showListToggle: boolean;
+  /** Focus mode + toggle (hides sidebar and note list, editor only). */
+  focusActive: boolean;
+  onToggleFocus: () => void;
   /** Shared EditorView handle (owned by App — Telescope jumps need it too). */
   viewRef: MutableRefObject<EditorView | null>;
   /** Jump when no editor view is mounted (preview-only mode) — App mounts it. */
@@ -336,19 +334,17 @@ export default function Editor(props: EditorProps) {
       )}
 
       <div className="flex items-center gap-1 border-b border-[var(--border)] px-2 py-1.5">
-        {props.showListToggle && (
-          <button
-            className={`${fmtBtn} focus-ring`}
-            title={props.listOpen ? 'Collapse note list (mod+\\)' : 'Expand note list (mod+\\)'}
-            aria-label={props.listOpen ? 'Collapse note list' : 'Expand note list'}
-            aria-expanded={props.listOpen}
-            onClick={props.onToggleList}
-          >
-            {props.listOpen
-              ? <Fullscreen size={15} className="opacity-60" />
-              : <ExitFullscreen size={15} className="opacity-60" />}
-          </button>
-        )}
+        <button
+          className={`${fmtBtn} focus-ring`}
+          title={props.focusActive ? 'Exit focus mode (mod+Shift+D)' : 'Focus mode (mod+Shift+D)'}
+          aria-label={props.focusActive ? 'Exit focus mode' : 'Enter focus mode'}
+          aria-pressed={props.focusActive}
+          onClick={props.onToggleFocus}
+        >
+          {props.focusActive
+            ? <ExitFullscreen size={15} className="opacity-60" />
+            : <Fullscreen size={15} className="opacity-60" />}
+        </button>
         <span className="ml-auto" />
         <div role="radiogroup" aria-label="View mode" className="flex shrink-0 items-center rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
           {MODES.map((m) => (
