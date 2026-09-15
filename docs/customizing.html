@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preferences and themes — devnote docs</title>
+<meta name="description" content="Customize devnote defaults, appearance, editing behavior, panes, and shortcuts.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
+</head>
+<body class="docs">
+<div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>DOCS</small></a>
+  <div class="nav-links" data-nav-links>
+    <a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a>
+  </div>
+  <div class="nav-right">
+    <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
+    <a class="gh-btn" href="https://github.com/shubhscode/devnote"><span aria-hidden="true">★</span><span class="count" data-stars>—</span></a>
+    <button class="icon-btn burger" data-burger title="Menu">☰</button>
+  </div>
+</div></nav>
+
+<div class="docs-layout">
+  <aside class="docs-side" aria-label="Documentation">
+    <h5>Start</h5>
+    <a href="install.html">Install</a>
+    <a href="index.html#features">Product tour</a>
+    <h5>Write and organize</h5>
+    <a href="writing.html">Writing notes</a>
+    <a href="organizing.html">Notebooks, tags, and history</a>
+    <a href="customizing.html" class="active" aria-current="page">Preferences and themes</a>
+    <h5>Find</h5>
+    <a href="search.html">Search reference</a>
+    <a href="telescope.html">Telescope</a>
+    <a href="shortcuts.html">Keyboard shortcuts</a>
+    <h5>Files and sync</h5>
+    <a href="sync.html">Sync, files, and backup</a>
+    <h5>Project</h5>
+    <a href="https://github.com/shubhscode/devnote">GitHub ★ <span data-stars>—</span></a>
+    <a href="https://github.com/shubhscode/devnote/releases">Releases</a>
+    <a href="https://github.com/shubhscode/devnote/blob/main/PLAN.md">Roadmap</a>
+  </aside>
+
+  <article class="doc">
+    <div class="breadcrumb">Docs / Preferences and themes</div>
+    <h1>Preferences and themes</h1>
+    <p class="lead">Open Preferences with <kbd>mod ,</kbd> or the sidebar gear. Settings persist locally; theme and code colors stay coordinated across the editor and preview.</p>
+    <div class="doc-meta"><span>Applies to v0.3+</span><span>Web and desktop</span><span>Settings stay local</span></div>
+
+    <div class="toc"><b>On this page</b> · <a href="#general">General</a> · <a href="#appearance">Appearance</a> · <a href="#editing">Editing</a> · <a href="#panes">Panes</a> · <a href="#shortcuts-tab">Shortcuts tab</a></div>
+
+    <h2 id="general">General</h2>
+    <p><b>Default notebook</b> controls where notes created from All Notes land. <b>Auto</b> uses the first available notebook. Sync, backup, and restore live on the separate <b>Sync</b> tab documented under <a href="sync.html">sync, files, and backup</a>.</p>
+
+    <h2 id="appearance">Appearance</h2>
+    <p>devnote ships nine coordinated appearances: <b>Light</b>, <b>Dark</b>, <b>System</b>, <b>Catppuccin Latte</b>, <b>Catppuccin Mocha</b>, <b>Solarized Light</b>, <b>Solarized Dark</b>, <b>Dracula</b>, and <b>Nord</b>. System follows the operating system. Code colors use the same theme variables in both the editor and preview.</p>
+    <p>Switch without opening Preferences through Telescope: press <kbd>mod K</kbd>, type <kbd>h</kbd>, choose a theme, press <kbd>Enter</kbd>.</p>
+
+    <h2 id="editing">Editing</h2>
+    <ul>
+      <li><b>Word wrap:</b> toggle soft wrapping in the Markdown source.</li>
+      <li><b>Editor font size:</b> 11–18 px slider; headings and code scale with it.</li>
+      <li><b>Note list order:</b> default order when no search query is active. Search always ranks by relevance.</li>
+      <li>Formatting remains in the selection bubble menu; <kbd>/</kbd> inserts blocks, and <kbd>mod F</kbd> finds within the note.</li>
+    </ul>
+
+    <h2 id="panes">Panes</h2>
+    <p>Collapse the sidebar with <kbd>mod /</kbd> and the note list with <kbd>mod \</kbd>. The note-list toggle lives at the top-left of the editor pane and switches between fullscreen and exit-fullscreen icons. Drag pane dividers to resize; double-click a divider to reset. Widths persist locally.</p>
+
+    <h2 id="shortcuts-tab">Shortcuts tab</h2>
+    <p>The Shortcuts tab is currently a filterable reference for every <code>core:*</code> command and default binding. It also shows command IDs for unbound actions. Full key remapping is planned with the later plugin/keybinding work; for now, run any command from Telescope’s <code>&gt;</code> source.</p>
+
+    <div class="pager">
+      <a href="organizing.html"><small>← Previous</small>Notebooks, tags, and history</a>
+      <a href="search.html" style="text-align:right"><small>Next →</small>Search reference</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site"><div class="foot-grid">
+  <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span></div>
+  <nav><a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
+</div></footer>
+<script src="app.js"></script>
+</body>
+</html>

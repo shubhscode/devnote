@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronRight, X } from 'reicon-react';
+import { X } from 'reicon-react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { EditorView } from '@devnote/editor';
 import { BUNDLED_THEMES, BUILTIN_TEMPLATES, THEME_VAR_KEYS, getTheme, resolveIsDark } from '@devnote/core';
@@ -546,12 +546,10 @@ export default function App() {
         />
       )}
 
-      {!focusMode && (
+      {!focusMode && listOpen && (
       <ErrorBoundary name="note list">
-      {listOpen ? (
       <NoteList
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
-        onCollapseList={() => setListOpen(false)}
         onOpenTelescope={() => setTelescopeOpen(true)}
         onChooseTemplate={() => setTemplatePickerOpen(true)}
         onRestoreSelected={(ids) => {
@@ -562,18 +560,6 @@ export default function App() {
           if (ids.length > 0) setMoveIds(ids);
         }}
       />
-      ) : (
-      <div className="flex w-9 shrink-0 flex-col items-center border-r border-[var(--border)] bg-[var(--bg-list)] pt-2">
-        <button
-          className="focus-ring rounded p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          title="Expand note list (mod+\\)"
-          aria-label="Expand note list"
-          onClick={() => setListOpen(true)}
-        >
-          <ChevronRight size={16} className="opacity-60" />
-        </button>
-      </div>
-      )}
       </ErrorBoundary>
       )}
       {!focusMode && listOpen && (
@@ -592,6 +578,9 @@ export default function App() {
         dark={dark}
         mode={viewMode}
         onModeChange={setViewMode}
+        listOpen={listOpen}
+        onToggleList={() => setListOpen((v) => !v)}
+        showListToggle={!focusMode}
         viewRef={editorViewRef}
         onRequestJump={jumpToPos}
         onChooseTemplate={() => setTemplatePickerOpen(true)}

@@ -27,7 +27,28 @@ test('default notebook applies to new notes', async ({ page }) => {
   await page.getByLabel('Default notebook').selectOption({ label: 'Projects / devnote' });
   await page.keyboard.press('Escape');
   await page.keyboard.press(`${mod}+n`);
-  await expect(page.getByText('Projects / devnote').first()).toBeVisible();
+  // The new note lands in Projects / devnote (checked via the store —
+  // the editor header no longer shows the notebook path).
+  const path = await page.evaluate(() => {
+    const api = (window as unknown as {
+      __devnoteStore: {
+        getState: () => {
+          notes: { id: string; notebookId: string }[];
+          notebooks: { id: string; name: string; parentId: string | null }[];
+          activeNoteId: string | null;
+        };
+      };
+    }).__devnoteStore.getState();
+    const note = api.notes.find((n) => n.id === api.activeNoteId);
+    const parts: string[] = [];
+    let cur = api.notebooks.find((b) => b.id === note?.notebookId);
+    while (cur) {
+      parts.unshift(cur.name);
+      cur = api.notebooks.find((b) => b.id === cur!.parentId);
+    }
+    return parts.join(' / ');
+  });
+  expect(path).toBe('Projects / devnote');
 });
 
 test('shortcut filter narrows the list', async ({ page }) => {

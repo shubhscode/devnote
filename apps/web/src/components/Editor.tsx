@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
-  Archive, Copy, Edit as EditIcon, Eye, History,
+  Archive, Copy, Edit as EditIcon, ExitFullscreen, Eye, Fullscreen, History,
   Layout, More, Pin, Plus, Trash, X,
 } from 'reicon-react';
-import { allTags, backlinksFor, BUNDLED_THEMES, getTheme, notebookPath, noteFilename, noteToMarkdown, resolveWikilink, wordStats } from '@devnote/core';
+import { allTags, backlinksFor, BUNDLED_THEMES, getTheme, noteFilename, noteToMarkdown, resolveWikilink, wordStats } from '@devnote/core';
 import type { EditorView } from '@devnote/editor';
 import { EditorView as CMView, extractToc, setLinkTitles } from '@devnote/editor';
 import type { MutableRefObject } from 'react';
@@ -25,6 +25,11 @@ interface EditorProps {
   dark: boolean;
   mode: ViewMode;
   onModeChange: (m: ViewMode) => void;
+  /** Note-list visibility + toggle (button lives top-left of this pane). */
+  listOpen: boolean;
+  onToggleList: () => void;
+  /** Hidden in distraction-free mode, where the list is force-hidden. */
+  showListToggle: boolean;
   /** Shared EditorView handle (owned by App — Telescope jumps need it too). */
   viewRef: MutableRefObject<EditorView | null>;
   /** Jump when no editor view is mounted (preview-only mode) — App mounts it. */
@@ -331,7 +336,19 @@ export default function Editor(props: EditorProps) {
       )}
 
       <div className="flex items-center gap-1 border-b border-[var(--border)] px-2 py-1.5">
-        <span className="truncate px-2 text-xs opacity-50">{notebookPath(notebooks, note.notebookId)}</span>
+        {props.showListToggle && (
+          <button
+            className={`${fmtBtn} focus-ring`}
+            title={props.listOpen ? 'Collapse note list (mod+\\)' : 'Expand note list (mod+\\)'}
+            aria-label={props.listOpen ? 'Collapse note list' : 'Expand note list'}
+            aria-expanded={props.listOpen}
+            onClick={props.onToggleList}
+          >
+            {props.listOpen
+              ? <Fullscreen size={15} className="opacity-60" />
+              : <ExitFullscreen size={15} className="opacity-60" />}
+          </button>
+        )}
         <span className="ml-auto" />
         <div role="radiogroup" aria-label="View mode" className="flex shrink-0 items-center rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
           {MODES.map((m) => (

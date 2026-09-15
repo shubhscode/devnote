@@ -30,13 +30,20 @@ test('sidebar resizer adjusts width by keyboard and persists', async ({ page }) 
   expect(reset).toBe(240);
 });
 
-test('note list collapses and reopens via toggle', async ({ page }) => {
+test('note list collapses and reopens via the editor toggle', async ({ page }) => {
   const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
+  const editor = page.locator('main');
   await expect(page.getByTestId('note-list-scroll')).toBeVisible();
+  // Toggle lives top-left of the editor pane; no breadcrumb, no list-header button.
+  await expect(editor.getByText('Inbox', { exact: true })).toHaveCount(0);
+  await editor.getByRole('button', { name: 'Collapse note list' }).click();
+  await expect(page.getByTestId('note-list-scroll')).toHaveCount(0);
+  await editor.getByRole('button', { name: 'Expand note list' }).click();
+  await expect(page.getByTestId('note-list-scroll')).toBeVisible();
+  // Keyboard toggle still works.
   await page.keyboard.press(`${mod}+Backslash`);
   await expect(page.getByTestId('note-list-scroll')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Expand note list' })).toBeVisible();
-  await page.getByRole('button', { name: 'Expand note list' }).click();
+  await page.keyboard.press(`${mod}+Backslash`);
   await expect(page.getByTestId('note-list-scroll')).toBeVisible();
 });
 

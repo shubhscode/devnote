@@ -32,5 +32,6 @@ test('jumps to a notebook via the b source', async ({ page }) => {
   // Exit animation keeps the overlay mounted briefly — wait for the rows to
   // detach (the input placeholder swaps per scope, so it can't signal this).
   await expect(page.locator('#tsc-row-0')).toHaveCount(0);
-  await expect(page.getByText('Projects / devnote')).toBeVisible();
+  // The note-list header shows the jumped-to notebook (row 0 = Projects).
+  await expect(page.getByText(/Projects · \d+ notes?/)).toBeVisible();
 });
