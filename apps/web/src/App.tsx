@@ -13,6 +13,7 @@ import { isTauri } from './lib/mirror';
 import Sidebar from './components/Sidebar';
 import NoteList from './components/NoteList';
 import PaneResizer from './components/PaneResizer';
+import AnimatedPane from './components/AnimatedPane';
 import Editor, { type ViewMode } from './components/Editor';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import MoveToNotebookDialog from './components/MoveToNotebookDialog';
@@ -70,6 +71,8 @@ export default function App() {
   const listWidth = useDevnote((s) => s.settings.listWidth);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [listOpen, setListOpen] = useState(true);
+  /** True while a pane divider is being dragged — pane tweens go instant. */
+  const [resizing, setResizing] = useState(false);
   // Narrow windows start with the sidebar hidden (never auto-reopened).
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023px)');
@@ -523,7 +526,7 @@ export default function App() {
         </div>
       )}
       <div className={`flex min-h-0 flex-1 ${inTauri ? '' : ''}`}>
-      {sidebarOpen && !focusMode && (
+      <AnimatedPane open={sidebarOpen && !focusMode} width={sidebarWidth + 6} instant={resizing}>
         <ErrorBoundary name="sidebar">
         <Sidebar
           onDeleteNotebook={(id) => {
@@ -534,8 +537,6 @@ export default function App() {
           onOpenPreferences={() => setPrefsOpen(true)}
         />
         </ErrorBoundary>
-      )}
-      {sidebarOpen && !focusMode && listOpen && (
         <PaneResizer
           label="Resize sidebar"
           value={sidebarWidth}
@@ -543,10 +544,11 @@ export default function App() {
           max={420}
           onChange={(w) => updateSettings({ sidebarWidth: w })}
           onReset={() => updateSettings({ sidebarWidth: 240 })}
+          onActiveChange={setResizing}
         />
-      )}
+      </AnimatedPane>
 
-      {!focusMode && listOpen && (
+      <AnimatedPane open={!focusMode && listOpen} width={listWidth + 6} instant={resizing}>
       <ErrorBoundary name="note list">
       <NoteList
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
@@ -561,8 +563,6 @@ export default function App() {
         }}
       />
       </ErrorBoundary>
-      )}
-      {!focusMode && listOpen && (
         <PaneResizer
           label="Resize note list"
           value={listWidth}
@@ -570,8 +570,9 @@ export default function App() {
           max={520}
           onChange={(w) => updateSettings({ listWidth: w })}
           onReset={() => updateSettings({ listWidth: 320 })}
+          onActiveChange={setResizing}
         />
-      )}
+      </AnimatedPane>
 
       <ErrorBoundary name="editor">
       <Editor

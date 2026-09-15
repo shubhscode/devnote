@@ -50,6 +50,28 @@ test('editor focus toggle hides sidebar and list, then restores both', async ({ 
   await expect(page.getByTestId('note-list-scroll')).toBeVisible();
 });
 
+test('focus mode widens the editor as panes close', async ({ page }) => {
+  const editor = page.locator('main');
+  const before = await editor.evaluate((el) => el.getBoundingClientRect().width);
+  await editor.getByRole('button', { name: 'Enter focus mode' }).click();
+  await expect(page.locator('aside')).toHaveCount(0);
+  const focused = await editor.evaluate((el) => el.getBoundingClientRect().width);
+  expect(focused).toBeGreaterThan(before + 100);
+  await editor.getByRole('button', { name: 'Exit focus mode' }).click();
+  await expect(page.locator('aside')).toBeVisible();
+});
+
+test('reduced motion still toggles panes', async ({ page }) => {
+  const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.reload();
+  await expect(page.getByPlaceholder('Untitled')).toHaveValue('Welcome to devnote');
+  await page.keyboard.press(`${mod}+Slash`);
+  await expect(page.locator('aside')).toHaveCount(0);
+  await page.keyboard.press(`${mod}+Slash`);
+  await expect(page.locator('aside')).toBeVisible();
+});
+
 test('virtualized list renders a window of 500 notes', async ({ page }) => {
   // Seed through the live store: writing localStorage + reloading would be
   // clobbered by the pagehide flush of the old in-memory state.

@@ -8,13 +8,15 @@ interface PaneResizerProps {
   max: number;
   onChange: (width: number) => void;
   onReset: () => void;
+  /** Fires true on drag start, false on release/cancel (lets parents skip tweens). */
+  onActiveChange?: (active: boolean) => void;
 }
 
 /**
  * Draggable pane splitter. Pointer capture keeps the drag alive outside the
  * handle; double-click resets. Widths persist via Settings (updateSettings).
  */
-export default function PaneResizer({ label, value, min, max, onChange, onReset }: PaneResizerProps) {
+export default function PaneResizer({ label, value, min, max, onChange, onReset, onActiveChange }: PaneResizerProps) {
   const drag = useRef<{ x: number; w: number } | null>(null);
   const raf = useRef(0);
   useEffect(() => () => cancelAnimationFrame(raf.current), []);
@@ -38,6 +40,7 @@ export default function PaneResizer({ label, value, min, max, onChange, onReset 
         if (e.button !== 0) return;
         e.preventDefault();
         drag.current = { x: e.clientX, w: value };
+        onActiveChange?.(true);
         (e.target as Element).setPointerCapture?.(e.pointerId);
       }}
       onPointerMove={(e) => {
@@ -48,8 +51,8 @@ export default function PaneResizer({ label, value, min, max, onChange, onReset 
         cancelAnimationFrame(raf.current);
         raf.current = requestAnimationFrame(() => onChange(next));
       }}
-      onPointerUp={() => { drag.current = null; }}
-      onPointerCancel={() => { drag.current = null; }}
+      onPointerUp={() => { drag.current = null; onActiveChange?.(false); }}
+      onPointerCancel={() => { drag.current = null; onActiveChange?.(false); }}
       className="focus-ring w-1.5 shrink-0 cursor-col-resize touch-none transition-colors hover:bg-[var(--accent-soft)] focus:bg-[var(--accent-soft)] active:bg-[var(--accent-soft)]"
     />
   );
