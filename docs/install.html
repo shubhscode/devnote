@@ -11,13 +11,13 @@
 <link rel="stylesheet" href="styles.css">
 <script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
 </head>
-<body>
+<body class="docs">
 <div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 <nav class="nav"><div class="nav-inner">
   <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>DOCS</small></a>
-  <div class="nav-links" data-nav-links>
-    <a href="index.html">Home</a><a href="install.html" class="active">Install</a><a href="sync.html">Sync</a><a href="search.html">Search</a><a href="shortcuts.html">Shortcuts</a>
-  </div>
+    <div class="nav-links" data-nav-links>
+      <a href="install.html" class="active" aria-current="page">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a>
+    </div>
   <div class="nav-right">
     <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
     <a class="gh-btn" href="https://github.com/shubhscode/devnote"><span aria-hidden="true">★</span><span class="count" data-stars>—</span></a>
@@ -26,24 +26,31 @@
 </div></nav>
 
 <div class="docs-layout">
-  <aside class="docs-side">
-    <h5>Getting started</h5>
-    <a href="install.html" class="active">Install</a>
-    <a href="index.html#features">Features tour</a>
-    <h5>Using devnote</h5>
+  <aside class="docs-side" aria-label="Documentation">
+    <h5>Start</h5>
+    <a href="install.html" class="active" aria-current="page">Install</a>
+    <a href="index.html#features">Product tour</a>
+    <h5>Write and organize</h5>
+    <a href="writing.html">Writing notes</a>
+    <a href="organizing.html">Notebooks, tags, and history</a>
+    <a href="customizing.html">Preferences and themes</a>
+    <h5>Find</h5>
     <a href="search.html">Search reference</a>
+    <a href="telescope.html">Telescope</a>
     <a href="shortcuts.html">Keyboard shortcuts</a>
-    <a href="sync.html">Git sync &amp; backup</a>
+    <h5>Files and sync</h5>
+    <a href="sync.html">Sync, files, and backup</a>
     <h5>Project</h5>
     <a href="https://github.com/shubhscode/devnote">GitHub ★ <span data-stars>—</span></a>
     <a href="https://github.com/shubhscode/devnote/releases">Releases</a>
-    <a href="https://github.com/shubhscode/devnote/blob/main/PLAN.md">Roadmap (PLAN.md)</a>
+    <a href="https://github.com/shubhscode/devnote/blob/main/PLAN.md">Roadmap</a>
   </aside>
 
   <article class="doc">
     <div class="breadcrumb">Docs / Getting started</div>
     <h1>Install</h1>
     <p class="lead">Two paths: grab the macOS app, or run from source. Either way your notes live in <code>~/devnote</code> as plain Markdown.</p>
+    <div class="doc-meta"><span>Applies to v0.3+</span><span>macOS app and source</span><span>No account required</span></div>
 
     <div class="toc"><b>On this page</b> · <a href="#macos">macOS app</a> · <a href="#source">From source</a> · <a href="#verify">Verify</a> · <a href="#troubleshoot">Troubleshooting</a></div>
 
@@ -76,15 +83,15 @@ pnpm desktop:install                       <span class="tok-c"># release build �
     </table>
 
     <div class="pager">
-      <a href="index.html"><small>← Previous</small>Home</a>
-      <a href="sync.html" style="text-align:right"><small>Next →</small>Git sync &amp; backup</a>
+      <a href="index.html#features"><small>← Previous</small>Product tour</a>
+      <a href="writing.html" style="text-align:right"><small>Next →</small>Writing notes</a>
     </div>
   </article>
 </div>
 
 <footer class="site"><div class="foot-grid">
   <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span></div>
-  <nav><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html">Search</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
+  <nav><a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
 </div></footer>
 <script src="app.js"></script>
 </body>

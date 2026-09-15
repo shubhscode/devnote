@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Writing notes — devnote docs</title>
+<meta name="description" content="Create, edit, format, preview, and export Markdown notes in devnote.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
+</head>
+<body class="docs">
+<div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>DOCS</small></a>
+  <div class="nav-links" data-nav-links>
+    <a href="install.html">Install</a><a href="writing.html" class="active" aria-current="page">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a>
+  </div>
+  <div class="nav-right">
+    <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
+    <a class="gh-btn" href="https://github.com/shubhscode/devnote"><span aria-hidden="true">★</span><span class="count" data-stars>—</span></a>
+    <button class="icon-btn burger" data-burger title="Menu">☰</button>
+  </div>
+</div></nav>
+
+<div class="docs-layout">
+  <aside class="docs-side" aria-label="Documentation">
+    <h5>Start</h5>
+    <a href="install.html">Install</a>
+    <a href="index.html#features">Product tour</a>
+    <h5>Write and organize</h5>
+    <a href="writing.html" class="active" aria-current="page">Writing notes</a>
+    <a href="organizing.html">Notebooks, tags, and history</a>
+    <a href="customizing.html">Preferences and themes</a>
+    <h5>Find</h5>
+    <a href="search.html">Search reference</a>
+    <a href="telescope.html">Telescope</a>
+    <a href="shortcuts.html">Keyboard shortcuts</a>
+    <h5>Files and sync</h5>
+    <a href="sync.html">Sync, files, and backup</a>
+    <h5>Project</h5>
+    <a href="https://github.com/shubhscode/devnote">GitHub ★ <span data-stars>—</span></a>
+    <a href="https://github.com/shubhscode/devnote/releases">Releases</a>
+    <a href="https://github.com/shubhscode/devnote/blob/main/PLAN.md">Roadmap</a>
+  </aside>
+
+  <article class="doc">
+    <div class="breadcrumb">Docs / Writing notes</div>
+    <h1>Writing notes</h1>
+    <p class="lead">Write Markdown in a code-first editor, check the sanitized preview, and export when finished. Edits update immediately and are persisted automatically.</p>
+    <div class="doc-meta"><span>Applies to v0.3+</span><span>Web and desktop</span><span>Autosaves locally</span></div>
+
+    <div class="toc"><b>On this page</b> · <a href="#lifecycle">Note lifecycle</a> · <a href="#modes">Editor modes</a> · <a href="#formatting">Formatting</a> · <a href="#tables">Tables</a> · <a href="#paste">Paste and images</a> · <a href="#preview">Preview</a> · <a href="#export">Export</a></div>
+
+    <h2 id="lifecycle">Note lifecycle</h2>
+    <ul>
+      <li>Press <kbd>mod N</kbd> for a new note. From a notebook, it lands there; from All Notes, it uses the default notebook in <b>Preferences → General</b>.</li>
+      <li>Duplicate with <kbd>mod D</kbd>, or from the editor’s <b>More actions</b> menu.</li>
+      <li>Move a note to Trash with <kbd>mod ⌫</kbd> or the editor menu. Trash → <b>Restore…</b> asks for the destination notebook; only Trash → <b>Delete forever</b> permanently removes the note after confirmation.</li>
+      <li>Move between notes with <kbd>mod [</kbd> and <kbd>mod ]</kbd>; this history is separate from revision history.</li>
+    </ul>
+
+    <h2 id="modes">Editor modes</h2>
+    <table>
+      <tr><th>Mode</th><th>Shortcut</th><th>Use it for</th></tr>
+      <tr><td>Edit</td><td><kbd>mod E</kbd></td><td>Focused Markdown source.</td></tr>
+      <tr><td>Preview</td><td><kbd>mod E</kbd></td><td>Rendered, sanitized output.</td></tr>
+      <tr><td>Side-by-side</td><td><kbd>mod P</kbd></td><td>Source and preview together.</td></tr>
+      <tr><td>Distraction-free</td><td><kbd>mod ⇧ D</kbd></td><td>Editor only, chrome hidden.</td></tr>
+    </table>
+    <p>Toggle the sidebar with <kbd>mod /</kbd> and the note list with <kbd>mod \</kbd>. Font size and word wrap live under <b>Preferences → Editing</b>.</p>
+
+    <h2 id="formatting">Formatting</h2>
+    <ul>
+      <li><kbd>mod B</kbd>, <kbd>mod I</kbd>, <kbd>mod ⇧ K</kbd>, and <kbd>mod '</kbd> apply bold, italic, links, and quotes.</li>
+      <li>Type <kbd>/</kbd> at the start of an empty line for headings, lists, tasks, quotes, code blocks, dividers, and tables.</li>
+      <li>Select text for the floating bubble menu with bold, italic, code, link, and block transforms.</li>
+      <li>Press <kbd>ctrl Space</kbd> for word/code completion. The editor also suggests fence languages after triple backticks.</li>
+      <li>Press <kbd>mod F</kbd> to find within the open note. Global library search is <kbd>mod ⇧ F</kbd>.</li>
+    </ul>
+    <div class="callout"><b>Lint warnings are advisory.</b> The editor flags whitespace, fence, and Markdown-shape issues without changing text.</div>
+
+    <h2 id="tables">Tables</h2>
+    <ul>
+      <li>Insert a table from the slash menu.</li>
+      <li><kbd>Enter</kbd> continues a table row; an empty new row exits the table.</li>
+      <li><kbd>Tab</kbd> and <kbd>⇧ Tab</kbd> move forward and backward between cells; tabbing past the last cell appends a row.</li>
+    </ul>
+
+    <h2 id="paste">Paste and images</h2>
+    <ul>
+      <li>Pasting an HTTP(S) URL over selected text creates a Markdown link.</li>
+      <li>Pasting rich HTML converts it to Markdown.</li>
+      <li>Pasting or dropping an image on the desktop app uploads it to <code>~/devnote/.attachments</code> and inserts <code>![name](.attachments/…)</code>. Images must be under 10 MiB.</li>
+    </ul>
+    <div class="callout"><b>Browser limit:</b> image paste, drop, preview bytes, and zip restore need the desktop app. In a browser, image paste explains the requirement instead of failing silently. See <a href="sync.html#attachments">attachments</a>.</div>
+
+    <h2 id="preview">Preview</h2>
+    <ul>
+      <li>GitHub-flavored Markdown: tables, task lists, strikethrough, footnotes, alerts, headings, links, and code blocks.</li>
+      <li>Code blocks have syntax highlighting and copy buttons.</li>
+      <li>Backticked color codes show swatches, for example <code>#ff6600</code>.</li>
+      <li>Preview task checkboxes update the underlying Markdown task.</li>
+      <li>Clicking a preview heading jumps to that section; <code>[[wikilinks]]</code> open matching notes, and backlinks are listed in the editor.</li>
+      <li>Preview HTML is sanitized before display; scripts and unsafe URLs are removed.</li>
+    </ul>
+
+    <h2 id="export">Export</h2>
+    <p>From the editor’s <b>More actions</b> menu, export the open note as Markdown, styled HTML, or Print/PDF. Bulk Markdown export for selected notes is in the note-list bulk bar; full-library export and restore are under <a href="sync.html#backup">backup</a>.</p>
+
+    <div class="pager">
+      <a href="install.html"><small>← Previous</small>Install</a>
+      <a href="organizing.html" style="text-align:right"><small>Next →</small>Notebooks, tags, and history</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site"><div class="foot-grid">
+  <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span></div>
+  <nav><a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
+</div></footer>
+<script src="app.js"></script>
+</body>
+</html>

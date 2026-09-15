@@ -11,13 +11,13 @@
 <link rel="stylesheet" href="styles.css">
 <script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
 </head>
-<body>
+<body class="docs">
 <div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 <nav class="nav"><div class="nav-inner">
   <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>DOCS</small></a>
-  <div class="nav-links" data-nav-links>
-    <a href="index.html">Home</a><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html" class="active">Search</a><a href="shortcuts.html">Shortcuts</a>
-  </div>
+    <div class="nav-links" data-nav-links>
+      <a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html" class="active" aria-current="page">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a>
+    </div>
   <div class="nav-right">
     <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
     <a class="gh-btn" href="https://github.com/shubhscode/devnote"><span aria-hidden="true">★</span><span class="count" data-stars>—</span></a>
@@ -26,25 +26,35 @@
 </div></nav>
 
 <div class="docs-layout">
-  <aside class="docs-side">
-    <h5>Getting started</h5>
+  <aside class="docs-side" aria-label="Documentation">
+    <h5>Start</h5>
     <a href="install.html">Install</a>
-    <a href="index.html#features">Features tour</a>
-    <h5>Using devnote</h5>
-    <a href="search.html" class="active">Search reference</a>
+    <a href="index.html#features">Product tour</a>
+    <h5>Write and organize</h5>
+    <a href="writing.html">Writing notes</a>
+    <a href="organizing.html">Notebooks, tags, and history</a>
+    <a href="customizing.html">Preferences and themes</a>
+    <h5>Find</h5>
+    <a href="search.html" class="active" aria-current="page">Search reference</a>
+    <a href="telescope.html">Telescope</a>
     <a href="shortcuts.html">Keyboard shortcuts</a>
-    <a href="sync.html">Git sync &amp; backup</a>
+    <h5>Files and sync</h5>
+    <a href="sync.html">Sync, files, and backup</a>
     <h5>Project</h5>
     <a href="https://github.com/shubhscode/devnote">GitHub ★ <span data-stars>—</span></a>
     <a href="https://github.com/shubhscode/devnote/releases">Releases</a>
+    <a href="https://github.com/shubhscode/devnote/blob/main/PLAN.md">Roadmap</a>
   </aside>
 
   <article class="doc">
     <div class="breadcrumb">Docs / Search</div>
     <h1>Search reference</h1>
     <p class="lead">One query language across the whole library. Focus with <kbd>mod ⇧ F</kbd>, clear with <kbd>esc</kbd>. The filter icon scopes to the current notebook; the globe searches everything.</p>
+    <div class="doc-meta"><span>Applies to v0.3+</span><span>Web and desktop</span><span>Offline</span></div>
 
-    <h2>Grammar</h2>
+    <div class="toc"><b>On this page</b> · <a href="#grammar">Grammar</a> · <a href="#scope">Scope</a> · <a href="#combining">Combining terms</a> · <a href="#ranking">Ranking</a> · <a href="#limitations">Limitations</a></div>
+
+    <h2 id="grammar">Grammar</h2>
     <table>
       <tr><th>Syntax</th><th>Matches</th><th>Example</th></tr>
       <tr><td><code>book:Work</code></td><td>Notes in the Work notebook</td><td><code>book:Engineering rust</code></td></tr>
@@ -56,7 +66,10 @@
       <tr><td><code>-draft</code></td><td>Excludes notes containing draft</td><td><code>roadmap -stale</code></td></tr>
     </table>
 
-    <h2>Combining terms</h2>
+    <h2 id="scope">Scope</h2>
+    <p>Notebook-only scope filters the current notebook; global scope searches all notebooks. Trash scope is fixed to Trash. For command-style jumping instead of filtering, use <a href="telescope.html">Telescope</a>.</p>
+
+    <h2 id="combining">Combining terms</h2>
     <p>Terms combine with <b>AND</b>:</p>
     <pre class="code" data-copy><code>typescript tag:Work status:Completed
 book:Engineering "conflict drill" -draft</code></pre>
@@ -71,15 +84,15 @@ book:Engineering "conflict drill" -draft</code></pre>
     <div class="callout"><b>No partial-match stemming:</b> searching <code>trin</code> won't find <code>string</code>. This is deliberate for predictability at 5k-note scale — FTS5 ranking parity is tracked in the roadmap.</div>
 
     <div class="pager">
-      <a href="sync.html"><small>← Previous</small>Git sync &amp; backup</a>
-      <a href="shortcuts.html" style="text-align:right"><small>Next →</small>Keyboard shortcuts</a>
+      <a href="customizing.html"><small>← Previous</small>Preferences and themes</a>
+      <a href="telescope.html" style="text-align:right"><small>Next →</small>Telescope</a>
     </div>
   </article>
 </div>
 
 <footer class="site"><div class="foot-grid">
   <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span></div>
-  <nav><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html">Search</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
+  <nav><a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
 </div></footer>
 <script src="app.js"></script>
 </body>

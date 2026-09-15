@@ -11,13 +11,13 @@
 <link rel="stylesheet" href="styles.css">
 <script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
 </head>
-<body>
+<body class="docs">
 <div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 <nav class="nav"><div class="nav-inner">
   <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>DOCS</small></a>
-  <div class="nav-links" data-nav-links>
-    <a href="index.html">Home</a><a href="install.html">Install</a><a href="sync.html" class="active">Sync</a><a href="search.html">Search</a><a href="shortcuts.html">Shortcuts</a>
-  </div>
+    <div class="nav-links" data-nav-links>
+      <a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html" class="active" aria-current="page">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a>
+    </div>
   <div class="nav-right">
     <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
     <a class="gh-btn" href="https://github.com/shubhscode/devnote"><span aria-hidden="true">★</span><span class="count" data-stars>—</span></a>
@@ -26,66 +26,146 @@
 </div></nav>
 
 <div class="docs-layout">
-  <aside class="docs-side">
-    <h5>Getting started</h5>
+  <aside class="docs-side" aria-label="Documentation">
+    <h5>Start</h5>
     <a href="install.html">Install</a>
-    <a href="index.html#features">Features tour</a>
-    <h5>Using devnote</h5>
+    <a href="index.html#features">Product tour</a>
+    <h5>Write and organize</h5>
+    <a href="writing.html">Writing notes</a>
+    <a href="organizing.html">Notebooks, tags, and history</a>
+    <a href="customizing.html">Preferences and themes</a>
+    <h5>Find</h5>
     <a href="search.html">Search reference</a>
+    <a href="telescope.html">Telescope</a>
     <a href="shortcuts.html">Keyboard shortcuts</a>
-    <a href="sync.html" class="active">Git sync &amp; backup</a>
+    <h5>Files and sync</h5>
+    <a href="sync.html" class="active" aria-current="page">Sync, files, and backup</a>
     <h5>Project</h5>
     <a href="https://github.com/shubhscode/devnote">GitHub ★ <span data-stars>—</span></a>
     <a href="https://github.com/shubhscode/devnote/releases">Releases</a>
+    <a href="https://github.com/shubhscode/devnote/blob/main/PLAN.md">Roadmap</a>
   </aside>
 
   <article class="doc">
-    <div class="breadcrumb">Docs / Sync</div>
-    <h1>Sync <span style="color:var(--muted);font-weight:400;font-size:0.6em">optional · git-based · offline-first</span></h1>
-    <p class="lead">Sync is never required. Everything works with Wi-Fi off. When you want a second machine — or history with teeth — share <code>~/devnote</code> through a private git repo.</p>
+    <div class="breadcrumb">Docs / Files and sync</div>
+    <h1>Sync, files, and backup</h1>
+    <p class="lead">Sync is never required. Everything works with Wi-Fi off. When you want history, backup, or a second machine, keep <code>~/devnote</code> as plain Markdown and share it through a private git repository.</p>
+    <div class="doc-meta"><span>Applies to v0.3+</span><span>Desktop app only</span><span>Manual sync — no background uploads</span></div>
 
-    <div class="toc"><b>On this page</b> · <a href="#setup">Setup</a> · <a href="#how">How it works</a> · <a href="#conflicts">Conflicts</a> · <a href="#status">Status dot</a> · <a href="#backup">Backup</a></div>
+    <div class="toc"><b>On this page</b> · <a href="#setup">Setup</a> · <a href="#auth">Authentication</a> · <a href="#how">How Sync now works</a> · <a href="#files">Files on disk</a> · <a href="#watch">Automatic disk imports</a> · <a href="#attachments">Attachments</a> · <a href="#conflicts">Conflicts</a> · <a href="#recovery">Recovery</a> · <a href="#status">Status</a> · <a href="#backup">Backup</a> · <a href="#ios">iOS</a> · <a href="#errors">Errors</a></div>
 
     <h2 id="setup">Setup in 3 steps</h2>
-    <div class="step"><span class="n">1</span><div>Create a <b>private</b> repo, e.g. <code>git@github.com:you/devnote.git</code>.</div></div>
-    <div class="step"><span class="n">2</span><div>In devnote: <b>Preferences → General → Git sync</b>, paste the remote URL.</div></div>
-    <div class="step"><span class="n">3</span><div>Click <b>Sync now</b> — initializes the repo, exports notes, commits, pushes.</div></div>
+    <div class="step"><span class="n">1</span><div>Create an <b>empty private</b> repository, for example <code>git@github.com:you/devnote.git</code>. Do not add a README, license, or other initial commit; an empty remote makes the first sync clean.</div></div>
+    <div class="step"><span class="n">2</span><div>In devnote, open <b>Preferences → Sync</b>. If <code>~/devnote</code> does not exist yet, click <b>Export now</b> first. Paste the remote URL, then press <kbd>Enter</kbd> or move focus away from the field. Invalid URLs show <b>Not a git remote</b>.</div></div>
+    <div class="step"><span class="n">3</span><div>Click <b>Sync now</b>. devnote exports notes, creates a commit, pulls, resolves conflicts if needed, pushes, then imports the result.</div></div>
+    <div class="callout ok"><b>Accepted remote formats:</b> HTTPS (<code>https://host/user/repo.git</code>), SSH (<code>ssh://git@host/user/repo.git</code>), and SSH shorthand (<code>git@host:user/repo.git</code>). Local filesystem paths are rejected: sync is meant for a private hosted repository.</div>
 
-    <h2 id="how">How it works</h2>
+    <h2 id="auth">Authentication</h2>
+    <p>devnote shells out to the git already installed on your machine. It does not store SSH keys, passwords, or tokens itself; it uses your existing SSH agent and git credential helper.</p>
+    <h3>SSH</h3>
+    <pre class="code" data-copy><code>ssh -T git@github.com
+<span class="tok-c"># success looks like: Hi you! You've successfully authenticated…</span></code></pre>
+    <p>Use SSH when possible. Keep the private key in <code>~/.ssh</code>, protect it with a passphrase, and back up <code>~/.ssh</code> separately from notes.</p>
+    <h3>HTTPS</h3>
+    <p>Use HTTPS with a credential helper so git can remember the login without devnote ever seeing it:</p>
+    <pre class="code" data-copy><code><span class="tok-c"># macOS</span>
+git config --global credential.helper osxkeychain
+
+<span class="tok-c"># Windows</span>
+git config --global credential.helper manager
+
+<span class="tok-c"># Linux (example; needs libsecret)</span>
+git config --global credential.helper libsecret</code></pre>
+    <div class="callout warn"><b>Keep the sync repository private.</b> Notes may contain personal plans, credentials, or client work. Also back up SSH keys and recovery codes: losing access to both a device and its keys can lock you out of the remote.</div>
+
+    <h2 id="how">How Sync now works</h2>
+    <ol>
+      <li><b>Export:</b> writes changed, moved, renamed, trashed, and permanently deleted notes to <code>~/devnote</code>.</li>
+      <li><b>Commit:</b> stages everything with <code>git add -A</code> and commits only when something changed. The message looks like <code>devnote: sync 2026-09-14T18:30:00.000Z (laptop)</code>.</li>
+      <li><b>Pull:</b> runs <code>git pull --no-rebase --no-edit</code> when an upstream branch exists. First-time repositories report <b>no upstream</b> and continue.</li>
+      <li><b>Resolve or push:</b> on conflict, devnote applies the per-file rule below and finishes the merge; otherwise it pushes, using <code>push -u origin HEAD</code> the first time.</li>
+      <li><b>Import:</b> reads <code>~/devnote</code> back into the app, including remote changes and preserved conflict notes.</li>
+    </ol>
+    <div class="callout"><b>Manual means manual.</b> There is no auto-commit on idle, pull on launch, push timer, or background upload. The watcher below imports disk changes into the app, but it never commits, pulls from the remote, or pushes.</div>
+
+    <h2 id="files">Files on disk</h2>
+    <p>Each note is one Markdown file:</p>
+    <pre class="code" data-copy><code>~/devnote/&lt;notebook-path&gt;/&lt;slug&gt;-&lt;id8&gt;.md
+~/devnote/.attachments/&lt;note&gt;-&lt;nonce&gt;-&lt;name&gt;.png</code></pre>
+    <p>Note files carry YAML frontmatter with <code>id</code>, <code>title</code>, <code>notebook</code>, <code>tags</code>, <code>status</code>, <code>pinned</code>, <code>trashed</code>, <code>createdAt</code>, and <code>updatedAt</code>. Unknown notebooks import under <code>Unsorted</code>. Files without an <code>id</code> are adopted and written back with one. When the same note exists in both places, newer <code>updatedAt</code> wins; imports never delete notes.</p>
+    <div class="callout warn"><b>Trash in the app, not in Finder.</b> Deleting a <code>.md</code> file externally does not delete the note: the next export recreates the missing file. Trash and restore notes inside devnote; only Trash → <b>Delete forever</b> prunes the file.</div>
+
+    <h2 id="watch">Automatic disk imports</h2>
+    <p>The desktop app watches <code>~/devnote</code> recursively. After about 750 milliseconds without filesystem activity, plus a short app-side debounce, devnote imports changed Markdown files. A notice appears only when notes were created or updated, for example:</p>
+    <pre class="code"><code>Mirror changed on disk: 1 new, 2 updated</code></pre>
+    <p>The watcher skips imports while a sync is running and while a merge conflict is waiting for review. It never commits, pulls remote history, or pushes.</p>
+
+    <h2 id="attachments">Attachments</h2>
+    <p>Paste or drop an image into the editor on the desktop app. devnote inserts an <b>Uploading…</b> placeholder at the cursor, saves the file, then replaces it with a stable reference such as:</p>
+    <pre class="code" data-copy><code>![diagram.png](.attachments/a1b2c3d4-m3xk2q-diagram.png)</code></pre>
     <ul>
-      <li>Each note is one <code>.md</code> file with YAML frontmatter: <code>~/devnote/&lt;notebook-path&gt;/&lt;slug&gt;-&lt;id8&gt;.md</code>.</li>
-      <li><b>Sync now</b> = export → commit → pull → resolve conflicts → push → import.</li>
-      <li>Manual trigger only — you control when to sync. No background uploads, no surprises.</li>
+      <li><b>Images only:</b> <code>png</code>, <code>jpg</code>, <code>jpeg</code>, <code>gif</code>, <code>webp</code>, <code>avif</code>, and <code>svg</code>.</li>
+      <li><b>Size cap:</b> 10 MiB per image.</li>
+      <li><b>Filenames:</b> note prefix, upload nonce, and original-name slug, so repeat pastes do not collide and renames do not orphan ownership.</li>
+      <li><b>Preview:</b> desktop resolves attachment bytes to a local preview image. Browsers cannot read these bytes and keep the alt text instead.</li>
+      <li><b>Sync:</b> attachments travel with normal git sync.</li>
     </ul>
-    <pre class="code" data-copy><code><span class="tok-c"># what lands on disk</span>
-~/devnote/engineering/sync-engine-a1b2c3d4.md
-<span class="tok-k">---</span>
-id: a1b2c3d4  status: active
-tags: [rust, sync]  trashed: <span class="tok-f">false</span>
-updatedAt: <span class="tok-s">2026-09-12T10:00:00Z</span>
-<span class="tok-k">---</span>
-# Sync engine design
-...</code></pre>
+    <div class="callout warn"><b>Backup gap:</b> one-click zip backup currently skips dot-directories, including <code>~/devnote/.attachments</code>. Until that changes, keep image backups in git or copy <code>.attachments</code> separately.</div>
 
     <h2 id="conflicts">Conflicts</h2>
-    <div class="callout ok"><b>Never silently drop text.</b> Per-file granularity: newer <code>updatedAt</code> wins, the loser is preserved as <code>&lt;name&gt;.conflict-&lt;device&gt;.md</code> plus a banner.</div>
-    <p>Deleting a note sets <code>trashed: true</code> in frontmatter (a tombstone), so deletes propagate across machines without resurrecting files. Permanent delete prunes the file.</p>
+    <div class="callout ok"><b>Never silently drop text.</b> Conflicts are resolved per file. Newer frontmatter <code>updatedAt</code> wins; a missing timestamp loses, and an exact tie keeps the local version.</div>
+    <p>The losing version is preserved next to the winner with a fresh note id, for example:</p>
+    <pre class="code" data-copy><code>~/devnote/engineering/sync-engine-a1b2c3d4.md
+~/devnote/engineering/sync-engine-a1b2c3d4.conflict-laptop.md</code></pre>
+    <p>The preserved note is titled <code>Sync engine design (conflict laptop)</code> and appears in the app for review. The red banner offers <b>Review loser</b> and <b>Resolve &amp; sync</b>. Device names come from <code>DEVNOTE_DEVICE</code>, then <code>HOSTNAME</code>, then the machine hostname; set <code>DEVNOTE_DEVICE</code> for readable conflict suffixes.</p>
 
-    <h2 id="status">Status dot</h2>
+    <h2 id="recovery">Recovery</h2>
+    <ol>
+      <li>Open the preserved <b>(conflict …)</b> note and copy anything still needed into the winner.</li>
+      <li>Trash the preserved note only when you are sure nothing remains.</li>
+      <li>Click <b>Resolve &amp; sync</b> to export, commit, and push the cleanup.</li>
+    </ol>
+    <p>If a sync error leaves git mid-merge, do not hand-edit conflict markers. Run <b>Sync now</b> again first. As a last resort in Terminal:</p>
+    <pre class="code" data-copy><code>cd ~/devnote
+git status
+git merge --abort</code></pre>
+    <div class="callout"><b>Restore points:</b> revision history keeps prior note text, tombstones preserve trashed notes across machines, and zip backup plus git history provide two independent recovery paths.</div>
+
+    <h2 id="status">Status</h2>
     <table>
-      <tr><th>Dot</th><th>Meaning</th></tr>
-      <tr><td><span class="yes">● green</span></td><td>Synced — everything committed &amp; pushed.</td></tr>
-      <tr><td><span class="mid">● yellow</span></td><td>Uncommitted local changes.</td></tr>
-      <tr><td><span style="color:var(--accent);font-weight:700">● blue</span></td><td>Committed, unpushed.</td></tr>
-      <tr><td><span style="color:var(--red);font-weight:700">● red</span></td><td>Conflict — resolve the <code>.conflict-*</code> file, then sync again.</td></tr>
+      <tr><th>State</th><th>Meaning</th><th>Next step</th></tr>
+      <tr><td>Synced</td><td>Everything is committed and pushed.</td><td>None.</td></tr>
+      <tr><td>Uncommitted changes</td><td>Local files differ from the last commit.</td><td>Click <b>Sync now</b>.</td></tr>
+      <tr><td>Unpushed commits</td><td>Local commits are ahead of the remote.</td><td>Click <b>Sync now</b>.</td></tr>
+      <tr><td>Remote updates available</td><td>The remote is ahead of this machine.</td><td>Click <b>Sync now</b>.</td></tr>
+      <tr><td>Diverged — needs attention</td><td>Both sides have new commits.</td><td>Click <b>Sync now</b>; review conflicts if any appear.</td></tr>
+      <tr><td>Conflict — review needed</td><td>A merge conflict is waiting.</td><td>Review the loser, then <b>Resolve &amp; sync</b>.</td></tr>
+      <tr><td>No sync repo (Export first)</td><td><code>~/devnote/.git</code> does not exist yet.</td><td>Click <b>Export now</b>, then set the remote.</td></tr>
+      <tr><td>Git not installed</td><td>The desktop app cannot find the git CLI.</td><td>Install git and restart the app.</td></tr>
     </table>
 
     <h2 id="backup">Backup &amp; restore</h2>
-    <p><b>Preferences → General → Backup &amp; restore → Export backup</b> creates <code>~/devnote-backup-YYYY-MM-DD.zip</code> with all notes. Restore overwrites <code>~/devnote</code> from a zip. Your user-data dir location is documented in the same panel.</p>
-    <div class="callout"><b>iOS path:</b> sync via Working Copy (manual git client) — documented in the roadmap. E2EE via git-crypt/age is a planned later layer.</div>
+    <p><b>Preferences → Sync → Export backup (.zip)</b> creates <code>~/devnote-backup-YYYY-MM-DD.zip</code> from visible mirror files. <b>Restore from backup</b> is desktop-only: pick a zip, confirm the destructive overwrite, and devnote writes it over <code>~/devnote</code>, then imports the result. Notes already open stay on screen until the next export.</p>
+    <div class="callout warn"><b>Restore overwrites the mirror.</b> Export a fresh backup first if the current disk state might contain anything worth keeping.</div>
+
+    <h2 id="ios">iOS</h2>
+    <p>There is no mobile app yet. The supported path is manual: clone the private repository in Working Copy, edit Markdown files, commit, and push. On desktop, click <b>Sync now</b> to pull those changes. Expect manual commits, no background sync, and possible clock skew in <code>updatedAt</code> comparisons. Passphrase-based git encryption remains a later roadmap item, not a built-in feature.</p>
+
+    <h2 id="errors">Errors</h2>
+    <table>
+      <tr><th>Message</th><th>Likely cause</th><th>Fix</th></tr>
+      <tr><td><code>git-not-found</code></td><td>No git CLI is installed.</td><td>Install git, restart devnote, then refresh sync state.</td></tr>
+      <tr><td><code>not-a-repo</code></td><td><code>~/devnote/.git</code> is missing.</td><td>Click <b>Export now</b> before setting a remote or syncing.</td></tr>
+      <tr><td><code>Not a git remote</code></td><td>URL has whitespace or an unsupported/local form.</td><td>Use HTTPS, <code>ssh://</code>, or <code>git@host:path</code>.</td></tr>
+      <tr><td><code>empty-remote</code></td><td>The saved remote URL is blank.</td><td>Paste a remote URL and press <kbd>Enter</kbd>.</td></tr>
+      <tr><td><code>Push failed: …</code></td><td>Authentication, permission, upstream, or non-fast-forward push.</td><td>Check SSH/HTTPS credentials, repository access, and whether the remote has commits your machine lacks.</td></tr>
+      <tr><td><code>no upstream</code></td><td>Normal on first sync; no tracking branch exists yet.</td><td>Continue: devnote pushes with <code>-u origin HEAD</code>.</td></tr>
+      <tr><td><code>mirror not initialized</code></td><td>Backup ran before <code>~/devnote</code> existed.</td><td>Click <b>Export now</b>, then back up again.</td></tr>
+      <tr><td><code>File mirror needs the DevNote desktop app</code></td><td>Mirror, sync, attachments, or zip restore was attempted in a browser.</td><td>Use the desktop app for those operations.</td></tr>
+    </table>
 
     <div class="pager">
-      <a href="install.html"><small>← Previous</small>Install</a>
+      <a href="telescope.html"><small>← Previous</small>Telescope</a>
       <a href="search.html" style="text-align:right"><small>Next →</small>Search reference</a>
     </div>
   </article>
@@ -93,7 +173,7 @@ updatedAt: <span class="tok-s">2026-09-12T10:00:00Z</span>
 
 <footer class="site"><div class="foot-grid">
   <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span></div>
-  <nav><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html">Search</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
+  <nav><a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
 </div></footer>
 <script src="app.js"></script>
 </body>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notebooks, tags, and history — devnote docs</title>
+<meta name="description" content="Organize devnote with nested notebooks, workspace view, tags, statuses, templates, revisions, and bulk actions.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
+</head>
+<body class="docs">
+<div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>DOCS</small></a>
+  <div class="nav-links" data-nav-links>
+    <a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html" class="active" aria-current="page">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a>
+  </div>
+  <div class="nav-right">
+    <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
+    <a class="gh-btn" href="https://github.com/shubhscode/devnote"><span aria-hidden="true">★</span><span class="count" data-stars>—</span></a>
+    <button class="icon-btn burger" data-burger title="Menu">☰</button>
+  </div>
+</div></nav>
+
+<div class="docs-layout">
+  <aside class="docs-side" aria-label="Documentation">
+    <h5>Start</h5>
+    <a href="install.html">Install</a>
+    <a href="index.html#features">Product tour</a>
+    <h5>Write and organize</h5>
+    <a href="writing.html">Writing notes</a>
+    <a href="organizing.html" class="active" aria-current="page">Notebooks, tags, and history</a>
+    <a href="customizing.html">Preferences and themes</a>
+    <h5>Find</h5>
+    <a href="search.html">Search reference</a>
+    <a href="telescope.html">Telescope</a>
+    <a href="shortcuts.html">Keyboard shortcuts</a>
+    <h5>Files and sync</h5>
+    <a href="sync.html">Sync, files, and backup</a>
+    <h5>Project</h5>
+    <a href="https://github.com/shubhscode/devnote">GitHub ★ <span data-stars>—</span></a>
+    <a href="https://github.com/shubhscode/devnote/releases">Releases</a>
+    <a href="https://github.com/shubhscode/devnote/blob/main/PLAN.md">Roadmap</a>
+  </aside>
+
+  <article class="doc">
+    <div class="breadcrumb">Docs / Organizing</div>
+    <h1>Notebooks, tags, and history</h1>
+    <p class="lead">Use notebooks for structure, tags and statuses for flexible filtering, workspace view for focus, and templates plus revisions for repeatable, recoverable work.</p>
+    <div class="doc-meta"><span>Applies to v0.3+</span><span>Web and desktop</span><span>Keyboard-first</span></div>
+
+    <div class="toc"><b>On this page</b> · <a href="#notebooks">Notebooks</a> · <a href="#workspace">Workspace</a> · <a href="#tags">Tags</a> · <a href="#status">Statuses</a> · <a href="#sort">Pin, sort, and bulk</a> · <a href="#templates">Templates</a> · <a href="#revisions">Revisions</a></div>
+
+    <h2 id="notebooks">Notebooks</h2>
+    <ul>
+      <li>Create nested notebooks from the sidebar’s <b>+</b> button or a notebook’s <b>New sub-notebook</b> action.</li>
+      <li>Rename inline; reorder with <b>Move up/down among siblings</b>; expand or collapse subtrees. Counts show direct notes in each notebook.</li>
+      <li>A notebook can be deleted only after it has no sub-notebooks and no untrashed notes. Move or trash those notes first.</li>
+      <li>Set the fallback destination for new notes under <b>Preferences → General → Default notebook</b>.</li>
+    </ul>
+
+    <h2 id="workspace">Workspace</h2>
+    <p>Focus one notebook subtree when a project deserves the whole window. Sidebar notebooks scope to that subtree, while status and tag counts recompute for the workspace.</p>
+    <ul>
+      <li>Press <kbd>Enter</kbd> on a notebook row, choose <b>Open as workspace</b>, use Telescope’s <kbd>⌘↵</kbd> notebook action, or press <kbd>mod Enter</kbd>.</li>
+      <li>Exit from the workspace banner, with <kbd>mod Enter</kbd> again, or by selecting content outside the workspace.</li>
+    </ul>
+
+    <h2 id="tags">Tags</h2>
+    <p>Type in the editor’s tag field for a filtered suggestion list with usage counts. Use <kbd>↑</kbd>/<kbd>↓</kbd> and <kbd>Enter</kbd> or <kbd>Tab</kbd> to accept, <kbd>Esc</kbd> to close, or choose the explicit <b>Create #name</b> row for a new tag.</p>
+    <ul>
+      <li>Tags are case-insensitive: <code>JS</code> and <code>js</code> are the same tag. The first-seen casing wins for display.</li>
+      <li>Unused tags disappear automatically because tags are derived from notes, not stored separately.</li>
+      <li>From a sidebar tag’s <b>…</b> menu: rename across all notes, merge into another tag, filter the note list, or delete the tag everywhere after confirmation.</li>
+      <li>Bulk-tag selected notes from the note-list bulk bar.</li>
+    </ul>
+
+    <h2 id="status">Statuses</h2>
+    <table>
+      <tr><th>Status</th><th>Search form</th><th>Use it for</th></tr>
+      <tr><td>No status</td><td><code>status:none</code></td><td>Untriaged notes.</td></tr>
+      <tr><td>Active</td><td><code>status:active</code></td><td>Current work.</td></tr>
+      <tr><td>On hold</td><td><code>status:onHold</code></td><td>Waiting or paused work.</td></tr>
+      <tr><td>Completed</td><td><code>status:completed</code></td><td>Finished work worth keeping.</td></tr>
+      <tr><td>Dropped</td><td><code>status:dropped</code></td><td>Abandoned work without deleting history.</td></tr>
+    </table>
+    <p>Change status from the editor header or the bulk bar. Sidebar status rows filter the list with the same <code>status:</code> grammar used by <a href="search.html">search</a>.</p>
+
+    <h2 id="sort">Pin, sort, and bulk</h2>
+    <ul>
+      <li>Pinned notes always sort first.</li>
+      <li>Change the default non-search order under <b>Preferences → Editing → Note list order</b>: last updated, newest first, or title A–Z. Search results always rank by relevance instead.</li>
+      <li>Select with checkboxes, <kbd>mod click</kbd>, <kbd>⇧ click</kbd> ranges, or scoped <kbd>mod A</kbd> in the note list. The bulk bar can move, tag, set status, pin, duplicate, export as Markdown, trash, restore, or permanently delete the selection.</li>
+    </ul>
+
+    <h2 id="templates">Templates</h2>
+    <p>Press <kbd>mod T</kbd> for filterable templates with live preview, recents, custom creation, editing, duplication, and deletion. Six read-only built-ins are included:</p>
+    <ul>
+      <li>Daily Report, Bug fix, Feature planning, Implementation plan, Concept deep dive, and Codebase exploration.</li>
+      <li>Applying a template fills an empty open note in place; otherwise it creates a new note.</li>
+      <li>Custom templates support <code>_template</code> frontmatter for title, description, tags, notebook, and status, plus date and UUID placeholders. Instruction-only quote blocks are removed from generated notes.</li>
+      <li>Editing a built-in saves an editable custom copy.</li>
+    </ul>
+
+    <h2 id="revisions">Revisions</h2>
+    <p>devnote snapshots title and body when you switch notes, after 30 seconds without edits, before restoring another revision, and before an in-place template fill. History keeps 50 revisions per note and 500 overall.</p>
+    <ul>
+      <li>Open history from the editor’s <b>More actions</b> menu or Telescope.</li>
+      <li>Preview any snapshot, then restore it. The pre-restore version is snapshotted first, so restores are undoable.</li>
+    </ul>
+
+    <div class="pager">
+      <a href="writing.html"><small>← Previous</small>Writing notes</a>
+      <a href="customizing.html" style="text-align:right"><small>Next →</small>Preferences and themes</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site"><div class="foot-grid">
+  <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span></div>
+  <nav><a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
+</div></footer>
+<script src="app.js"></script>
+</body>
+</html>

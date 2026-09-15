@@ -11,13 +11,13 @@
 <link rel="stylesheet" href="styles.css">
 <script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
 </head>
-<body>
+<body class="docs">
 <div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 <nav class="nav"><div class="nav-inner">
   <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>DOCS</small></a>
-  <div class="nav-links" data-nav-links>
-    <a href="index.html">Home</a><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html">Search</a><a href="shortcuts.html" class="active">Shortcuts</a>
-  </div>
+    <div class="nav-links" data-nav-links>
+      <a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html" class="active" aria-current="page">Shortcuts</a>
+    </div>
   <div class="nav-right">
     <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
     <a class="gh-btn" href="https://github.com/shubhscode/devnote"><span aria-hidden="true">★</span><span class="count" data-stars>—</span></a>
@@ -26,65 +26,87 @@
 </div></nav>
 
 <div class="docs-layout">
-  <aside class="docs-side">
-    <h5>Getting started</h5>
+  <aside class="docs-side" aria-label="Documentation">
+    <h5>Start</h5>
     <a href="install.html">Install</a>
-    <a href="index.html#features">Features tour</a>
-    <h5>Using devnote</h5>
+    <a href="index.html#features">Product tour</a>
+    <h5>Write and organize</h5>
+    <a href="writing.html">Writing notes</a>
+    <a href="organizing.html">Notebooks, tags, and history</a>
+    <a href="customizing.html">Preferences and themes</a>
+    <h5>Find</h5>
     <a href="search.html">Search reference</a>
-    <a href="shortcuts.html" class="active">Keyboard shortcuts</a>
-    <a href="sync.html">Git sync &amp; backup</a>
+    <a href="telescope.html">Telescope</a>
+    <a href="shortcuts.html" class="active" aria-current="page">Keyboard shortcuts</a>
+    <h5>Files and sync</h5>
+    <a href="sync.html">Sync, files, and backup</a>
     <h5>Project</h5>
     <a href="https://github.com/shubhscode/devnote">GitHub ★ <span data-stars>—</span></a>
     <a href="https://github.com/shubhscode/devnote/releases">Releases</a>
+    <a href="https://github.com/shubhscode/devnote/blob/main/PLAN.md">Roadmap</a>
   </aside>
 
   <article class="doc">
     <div class="breadcrumb">Docs / Shortcuts</div>
     <h1>Keyboard shortcuts</h1>
-    <p class="lead"><code>mod</code> = <kbd>⌘</kbd> on macOS, <kbd>Ctrl</kbd> elsewhere. Every action is also a <code>core:*</code> palette command — nothing is mouse-only.</p>
+    <p class="lead"><code>mod</code> means <kbd>⌘</kbd> on macOS and <kbd>Ctrl</kbd> elsewhere. Every action is also a <code>core:*</code> Telescope command — nothing important is mouse-only.</p>
+    <div class="doc-meta"><span>Applies to v0.3+</span><span>Web and desktop</span><span>Reference is filterable in Preferences</span></div>
 
-    <h2>Notes &amp; navigation</h2>
+    <div class="toc"><b>On this page</b> · <a href="#notes">Notes and navigation</a> · <a href="#editor">Editor</a> · <a href="#tags">Tags and bulk</a> · <a href="#telescope-keys">Telescope</a> · <a href="#remapping">Remapping</a></div>
+
+    <h2 id="notes">Notes &amp; navigation</h2>
     <div class="keys">
-      <div class="key-row"><span>Telescope (fuzzy finder)</span><kbd>mod K</kbd></div>
+      <div class="key-row"><span>Telescope</span><kbd>mod K</kbd></div>
       <div class="key-row"><span>New note / Duplicate</span><span><kbd>mod N</kbd> <kbd>mod D</kbd></span></div>
       <div class="key-row"><span>Templates</span><kbd>mod T</kbd></div>
-      <div class="key-row"><span>Note history back / forward</span><span><kbd>mod ←</kbd> <kbd>mod →</kbd></span></div>
-      <div class="key-row"><span>Focus search</span><kbd>mod ⇧ F</kbd></div>
-      <div class="key-row"><span>Sync now (git)</span><kbd>mod ⇧ S</kbd></div>
+      <div class="key-row"><span>Note history back / forward</span><span><kbd>mod [</kbd> <kbd>mod ]</kbd></span></div>
+      <div class="key-row"><span>Focus library search</span><kbd>mod ⇧ F</kbd></div>
+      <div class="key-row"><span>Sync now</span><kbd>mod ⇧ S</kbd></div>
+      <div class="key-row"><span>Sidebar / note list</span><span><kbd>mod /</kbd> <kbd>mod \</kbd></span></div>
+      <div class="key-row"><span>Focus workspace notebook</span><kbd>mod Enter</kbd></div>
+      <div class="key-row"><span>Preferences</span><kbd>mod ,</kbd></div>
     </div>
 
-    <h2>Editor &amp; view</h2>
+    <h2 id="editor">Editor &amp; view</h2>
     <div class="keys">
       <div class="key-row"><span>Edit / Preview toggle</span><kbd>mod E</kbd></div>
       <div class="key-row"><span>Side-by-side</span><kbd>mod P</kbd></div>
       <div class="key-row"><span>Distraction-free</span><kbd>mod ⇧ D</kbd></div>
-      <div class="key-row"><span>Sidebar toggle</span><kbd>mod /</kbd></div>
-      <div class="key-row"><span>Focus workspace notebook</span><kbd>mod ⏎</kbd></div>
-      <div class="key-row"><span>Preferences</span><kbd>mod ,</kbd></div>
-    </div>
-
-    <h2>Markdown formatting</h2>
-    <div class="keys">
       <div class="key-row"><span>Bold / Italic</span><span><kbd>mod B</kbd> <kbd>mod I</kbd></span></div>
       <div class="key-row"><span>Link / Quote</span><span><kbd>mod ⇧ K</kbd> <kbd>mod '</kbd></span></div>
       <div class="key-row"><span>Slash menu</span><kbd>/</kbd></div>
-      <div class="key-row"><span>Code suggestions</span><kbd>ctrl Space</kbd></div>
+      <div class="key-row"><span>Code and word suggestions</span><kbd>ctrl Space</kbd></div>
+      <div class="key-row"><span>Find within the open note</span><kbd>mod F</kbd></div>
+      <div class="key-row"><span>Table: next / previous cell</span><span><kbd>Tab</kbd> <kbd>⇧ Tab</kbd></span></div>
     </div>
 
-    <h2>Telescope prefixes</h2>
+    <h2 id="tags">Tags and bulk</h2>
+    <div class="keys">
+      <div class="key-row"><span>Accept tag suggestion</span><span><kbd>Enter</kbd> <kbd>Tab</kbd></span></div>
+      <div class="key-row"><span>Move through tag suggestions</span><span><kbd>↑</kbd> <kbd>↓</kbd></span></div>
+      <div class="key-row"><span>Close tag suggestions</span><kbd>Esc</kbd></div>
+      <div class="key-row"><span>Select all visible notes</span><kbd>mod A</kbd></div>
+      <div class="key-row"><span>Extend note selection</span><kbd>⇧ click</kbd></div>
+      <div class="key-row"><span>Toggle one note in selection</span><kbd>mod click</kbd></div>
+    </div>
+    <p>With multiple notes selected, the note-list bulk bar offers move, tag, status, pin, duplicate, Markdown export, trash, restore, and permanent delete.</p>
+
+    <h2 id="telescope-keys">Telescope prefixes</h2>
     <table>
       <tr><th>Prefix</th><th>Searches</th><th>Keys</th></tr>
-      <tr><td><code>&gt;</code></td><td>Commands (<code>core:*</code>)</td><td><kbd>⏎</kbd> run</td></tr>
-      <tr><td><code>b</code></td><td>Notebooks</td><td><kbd>⏎</kbd> open · <kbd>⇧ ⏎</kbd> move note</td></tr>
-      <tr><td><code>t</code></td><td>Tags</td><td><kbd>⏎</kbd> filter · <kbd>⇧ ⏎</kbd> add to note</td></tr>
-      <tr><td><code>#</code></td><td>Headings &amp; tasks in open note</td><td><kbd>⏎</kbd> jump</td></tr>
-      <tr><td><code>h</code></td><td>Themes</td><td><kbd>⏎</kbd> apply</td></tr>
+      <tr><td><code>&gt;</code></td><td>Commands (<code>core:*</code>)</td><td><kbd>Enter</kbd> run</td></tr>
+      <tr><td><code>b</code></td><td>Notebooks</td><td><kbd>Enter</kbd> open · <kbd>⇧ Enter</kbd> move note · <kbd>⌘ Enter</kbd> workspace</td></tr>
+      <tr><td><code>t</code></td><td>Tags</td><td><kbd>Enter</kbd> filter · <kbd>⇧ Enter</kbd> add to note</td></tr>
+      <tr><td><code>#</code></td><td>Headings &amp; tasks in open note</td><td><kbd>Enter</kbd> jump</td></tr>
+      <tr><td><code>h</code></td><td>Themes</td><td><kbd>Enter</kbd> apply</td></tr>
     </table>
-    <div class="callout"><b>Remappable:</b> all shortcuts are user-remappable (keybinding editor lands with the plugin API). Never hardcode <kbd>⌘</kbd> vs <kbd>Ctrl</kbd> — the app uses a <code>mod</code> abstraction throughout.</div>
+    <p>Use a space after letter prefixes (<code>b Projects</code>); symbol prefixes may attach directly (<code>&gt;sync</code>, <code>#deploy</code>). <kbd>Esc</kbd> steps back through filter, scope, all sources, then close. Full workflows are on the <a href="telescope.html">Telescope page</a>.</p>
+
+    <h2 id="remapping">Remapping</h2>
+    <div class="callout"><b>Reference today, remapping later:</b> Preferences → Shortcuts filters the canonical command list, but does not yet edit bindings. Run any command from Telescope. Full key remapping is planned alongside the plugin API.</div>
 
     <div class="pager">
-      <a href="search.html"><small>← Previous</small>Search reference</a>
+      <a href="sync.html"><small>← Previous</small>Sync, files, and backup</a>
       <a href="https://github.com/shubhscode/devnote" style="text-align:right"><small>Next →</small>Star on GitHub ★</a>
     </div>
   </article>
@@ -92,7 +114,7 @@
 
 <footer class="site"><div class="foot-grid">
   <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span></div>
-  <nav><a href="install.html">Install</a><a href="sync.html">Sync</a><a href="search.html">Search</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
+  <nav><a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
 </div></footer>
 <script src="app.js"></script>
 </body>

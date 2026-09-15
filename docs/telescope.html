@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telescope — devnote docs</title>
+<meta name="description" content="Use Telescope to run commands, jump notebooks and headings, filter tags, and switch themes.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>try{var t=localStorage.getItem("devnote-theme");document.documentElement.setAttribute("data-theme",t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"))}catch(e){}</script>
+</head>
+<body class="docs">
+<div class="bg-scene" aria-hidden="true"><div class="bg-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="index.html"><img src="icon.svg" alt="devnote logo"> devnote <small>DOCS</small></a>
+  <div class="nav-links" data-nav-links>
+    <a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html" class="active" aria-current="page">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a>
+  </div>
+  <div class="nav-right">
+    <button class="icon-btn" data-theme-toggle title="Toggle theme">☀</button>
+    <a class="gh-btn" href="https://github.com/shubhscode/devnote"><span aria-hidden="true">★</span><span class="count" data-stars>—</span></a>
+    <button class="icon-btn burger" data-burger title="Menu">☰</button>
+  </div>
+</div></nav>
+
+<div class="docs-layout">
+  <aside class="docs-side" aria-label="Documentation">
+    <h5>Start</h5>
+    <a href="install.html">Install</a>
+    <a href="index.html#features">Product tour</a>
+    <h5>Write and organize</h5>
+    <a href="writing.html">Writing notes</a>
+    <a href="organizing.html">Notebooks, tags, and history</a>
+    <a href="customizing.html">Preferences and themes</a>
+    <h5>Find</h5>
+    <a href="search.html">Search reference</a>
+    <a href="telescope.html" class="active" aria-current="page">Telescope</a>
+    <a href="shortcuts.html">Keyboard shortcuts</a>
+    <h5>Files and sync</h5>
+    <a href="sync.html">Sync, files, and backup</a>
+    <h5>Project</h5>
+    <a href="https://github.com/shubhscode/devnote">GitHub ★ <span data-stars>—</span></a>
+    <a href="https://github.com/shubhscode/devnote/releases">Releases</a>
+    <a href="https://github.com/shubhscode/devnote/blob/main/PLAN.md">Roadmap</a>
+  </aside>
+
+  <article class="doc">
+    <div class="breadcrumb">Docs / Telescope</div>
+    <h1>Telescope</h1>
+    <p class="lead">Press <kbd>mod K</kbd> anywhere and fuzzy-find commands, notebooks, tags, headings, tasks, and themes. Matches highlight as you type.</p>
+    <div class="doc-meta"><span>Applies to v0.3+</span><span>Web and desktop</span><span>Keyboard-first</span></div>
+
+    <div class="toc"><b>On this page</b> · <a href="#scopes">Scopes</a> · <a href="#keys">Keys</a> · <a href="#workflows">Workflows</a></div>
+
+    <h2 id="scopes">Scopes</h2>
+    <table>
+      <tr><th>Prefix</th><th>Searches</th><th>Examples</th></tr>
+      <tr><td><code>&gt;</code></td><td><code>core:*</code> commands</td><td><code>&gt; sync</code>, <code>&gt; theme</code></td></tr>
+      <tr><td><code>b</code></td><td>Notebooks by path</td><td><code>b Projects</code></td></tr>
+      <tr><td><code>t</code></td><td>Tags with counts</td><td><code>t rust</code></td></tr>
+      <tr><td><code>#</code></td><td>Headings and tasks in the open note</td><td><code># deploy</code></td></tr>
+      <tr><td><code>h</code></td><td>Themes</td><td><code>h nord</code></td></tr>
+    </table>
+    <p>Type a prefix plus a space to scope the search: <code>b Projects</code>. Symbol prefixes may also attach directly: <code>&gt;sync</code> and <code>#deploy</code>. Without a scoped prefix, Telescope searches all sources and shows the best matches per group.</p>
+
+    <h2 id="keys">Keys</h2>
+    <div class="keys">
+      <div class="key-row"><span>Move selection</span><span><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd></span></div>
+      <div class="key-row"><span>Run or open</span><kbd>Enter</kbd></div>
+      <div class="key-row"><span>Notebook: move active note</span><kbd>⇧ Enter</kbd></div>
+      <div class="key-row"><span>Notebook: focus as workspace</span><kbd>⌘ Enter</kbd></div>
+      <div class="key-row"><span>Tag: add to active note</span><kbd>⇧ Enter</kbd></div>
+      <div class="key-row"><span>Step back: filter → scope → all → close</span><kbd>Esc</kbd></div>
+    </div>
+
+    <h2 id="workflows">Workflows</h2>
+    <ul>
+      <li><b>Commands:</b> <kbd>mod K</kbd>, type <code>&gt;</code>, run sync, export, history, theme, or navigation commands.</li>
+      <li><b>Move quickly:</b> <kbd>mod K</kbd>, type <code>b Projects</code>, press <kbd>Enter</kbd> to open or <kbd>⇧ Enter</kbd> to move the active note there.</li>
+      <li><b>Tag quickly:</b> <kbd>mod K</kbd>, type <code>t rust</code>, press <kbd>Enter</kbd> to filter or <kbd>⇧ Enter</kbd> to add the tag.</li>
+      <li><b>Jump inside a note:</b> <kbd>mod K</kbd>, type <code># deploy</code>, press <kbd>Enter</kbd> to jump to the heading or task.</li>
+      <li><b>Change appearance:</b> <kbd>mod K</kbd>, type <code>h nord</code>, press <kbd>Enter</kbd>.</li>
+    </ul>
+
+    <div class="pager">
+      <a href="search.html"><small>← Previous</small>Search reference</a>
+      <a href="sync.html" style="text-align:right"><small>Next →</small>Sync, files, and backup</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site"><div class="foot-grid">
+  <div><b style="color:var(--fg)">devnote</b> · MIT · © <span data-year>2026</span></div>
+  <nav><a href="install.html">Install</a><a href="writing.html">Writing</a><a href="organizing.html">Organizing</a><a href="search.html">Search</a><a href="telescope.html">Telescope</a><a href="sync.html">Sync &amp; files</a><a href="shortcuts.html">Shortcuts</a><a href="https://github.com/shubhscode/devnote">GitHub</a></nav>
+</div></footer>
+<script src="app.js"></script>
+</body>
+</html>

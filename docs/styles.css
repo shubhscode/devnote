@@ -222,7 +222,7 @@ footer.site a { color: var(--muted); } footer.site a:hover { color: var(--fg); }
 .doc p.muted, .doc li.muted { color: var(--muted); }
 .doc ol, .doc ul { padding-left: 22px; }
 .doc li { margin: 6px 0; }
-.callout { border: 1px solid var(--border-strong); border-left: 4px solid var(--accent); background: var(--card); border-radius: 12px; padding: 14px 18px; margin: 20px 0; font-size: 14.5px; }
+.callout { border: 1px solid var(--border-strong); border-left: 1px solid var(--border-strong); background: var(--card); border-radius: 12px; padding: 14px 18px; margin: 20px 0; font-size: 14.5px; }
 .callout.warn { border-left-color: var(--yellow); }
 .callout.ok { border-left-color: var(--green); }
 .doc table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 16px 0; }
@@ -313,4 +313,194 @@ footer.site a { color: var(--muted); } footer.site a:hover { color: var(--fg); }
   .mock-body { grid-template-columns: 1fr; }
   .mside, .mlist { display: none; }
   .mtele { max-width: 92%; }
+}
+
+/* ---------- professional docs reading system (docs pages only) ---------- */
+body.docs {
+  --doc-measure: 74ch;
+  --doc-rail: 272px;
+  --doc-gutter: 34px;
+  --doc-ring: rgba(96, 165, 250, 0.34);
+}
+body.docs ::selection { background: rgba(96, 165, 250, 0.32); }
+body.docs :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+body.docs a { text-underline-offset: 3px; }
+body.docs a:hover { text-decoration-thickness: 1.5px; }
+body.docs .docs-layout {
+  grid-template-columns: var(--doc-rail) minmax(0, 1fr);
+  gap: var(--doc-gutter);
+  max-width: 1240px;
+  padding-top: 34px;
+}
+body.docs .docs-side {
+  padding: 16px 12px;
+  background: linear-gradient(180deg, var(--card-solid), transparent 240px);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+body.docs .docs-side::-webkit-scrollbar { width: 8px; }
+body.docs .docs-side::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 99px;
+}
+body.docs .docs-side h5 {
+  margin: 16px 10px 7px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+body.docs .docs-side h5:first-child { margin-top: 0; }
+body.docs .docs-side a {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 13.8px;
+  line-height: 1.35;
+}
+body.docs .docs-side a:hover { border-color: var(--border); }
+body.docs .docs-side a.active {
+  color: var(--fg);
+  background: rgba(96, 165, 250, 0.13);
+  border-color: rgba(96, 165, 250, 0.28);
+  font-weight: 650;
+}
+body.docs .doc { max-width: var(--doc-measure); }
+body.docs .doc h1 {
+  font-size: clamp(32px, 4vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+body.docs .doc h2 {
+  margin-top: 46px;
+  border-top: 1px solid var(--border);
+  padding-top: 22px;
+  scroll-margin-top: 90px;
+  text-wrap: balance;
+}
+body.docs .doc h2 + p,
+body.docs .doc h3 + p { margin-top: 8px; }
+body.docs .doc h3 { scroll-margin-top: 90px; }
+body.docs .doc p,
+body.docs .doc li { font-size: 15.2px; }
+body.docs .doc p.lead { font-size: 17.5px; max-width: 62ch; }
+body.docs .doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 18px;
+  color: var(--muted);
+  font-size: 12.8px;
+}
+body.docs .doc-meta span {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 99px;
+  padding: 3px 10px;
+}
+body.docs .doc-meta code { border: 0; background: none; padding: 0; }
+body.docs .toc {
+  background: var(--card-solid);
+  padding: 12px 16px;
+  font-size: 13.8px;
+}
+body.docs .toc b {
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+body.docs .callout {
+  position: relative;
+  border: 1px solid var(--border-strong);
+  border-left: 1px solid var(--border-strong);
+  background: var(--card-solid);
+  border-radius: 14px;
+  padding: 14px 16px 14px 44px;
+}
+body.docs .callout::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 21px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.16);
+}
+body.docs .callout.warn::before {
+  background: var(--yellow);
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.16);
+}
+body.docs .callout.ok::before {
+  background: var(--green);
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.16);
+}
+body.docs .doc table {
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+body.docs .doc th,
+body.docs .doc td { border-bottom: 1px solid var(--border); }
+body.docs .doc tr:last-child th,
+body.docs .doc tr:last-child td { border-bottom: 0; }
+body.docs .doc tbody tr:hover td { background: rgba(148, 163, 184, 0.07); }
+body.docs .keys { grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+body.docs .key-row { background: var(--card-solid); }
+body.docs .doc pre.code { font-size: 12.9px; }
+body.docs .doc pre.code::-webkit-scrollbar { height: 8px; }
+body.docs .doc pre.code::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 99px;
+}
+body.docs .step { align-items: flex-start; }
+body.docs .step .n {
+  background: var(--fg);
+  color: var(--bg);
+  box-shadow: none;
+}
+body.docs .pager a {
+  background: var(--card-solid);
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+body.docs .pager a:hover { transform: translateY(-2px); }
+body.docs footer.site { margin-top: 72px; }
+@media (max-width: 1080px) {
+  body.docs .docs-layout { grid-template-columns: 1fr; }
+  body.docs .docs-side {
+    position: static !important;
+    max-height: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 2px 14px;
+    align-items: start;
+  }
+  body.docs .docs-side h5 { grid-column: 1 / -1; margin-top: 10px; }
+  body.docs .doc { max-width: 78ch; }
+}
+@media print {
+  body.docs .nav,
+  body.docs .docs-side,
+  body.docs footer.site,
+  body.docs .copy-btn,
+  body.docs .pager { display: none !important; }
+  body.docs .docs-layout { display: block; max-width: 100%; padding: 0; }
+  body.docs .doc { max-width: 100%; }
+  body.docs { background: #fff; color: #000; }
 }
