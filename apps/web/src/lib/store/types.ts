@@ -18,6 +18,8 @@ export interface Settings {
   sidebarWidth: number;
   /** Note-list width, px (clamped 240–520). */
   listWidth: number;
+  /** Render fenced ```mermaid blocks as diagrams in the preview (2.12). */
+  renderDiagrams: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -28,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   noteSort: 'updated',
   sidebarWidth: 240,
   listWidth: 320,
+  renderDiagrams: true,
 };
 
 export type Selection =

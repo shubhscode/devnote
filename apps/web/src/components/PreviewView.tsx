@@ -23,6 +23,7 @@ export default function PreviewView(props: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   // Lowercased live titles — known wikilink targets (broken ones flagged).
   const notes = useDevnote((s) => s.notes);
+  const renderDiagrams = useDevnote((s) => s.settings.renderDiagrams);
   const linkTargets = useMemo(() => {
     const set = new Set<string>();
     for (const n of notes) {
@@ -33,9 +34,74 @@ export default function PreviewView(props: Props) {
     return set;
   }, [notes]);
   const html = useMemo(
-    () => renderMarkdown(props.markdown, { linkTargets }),
-    [props.markdown, linkTargets],
+    () => renderMarkdown(props.markdown, { linkTargets, mermaid: renderDiagrams, excalidraw: renderDiagrams }),
+    [props.markdown, linkTargets, renderDiagrams],
   );
+
+  // Mermaid (2.12): placeholders → SVG via the lazy mermaid chunk. Source is
+  // the div's (escaped) text child; mermaid's strict securityLevel guards
+  // the SVG output. Errors degrade to the raw source (still legible).
+  useEffect(() => {
+    const root = hostRef.current;
+    if (!root) return;
+    const blocks = Array.from(
+      root.querySelectorAll<HTMLElement>('div.mermaid-block:not([data-rendered])'),
+    );
+    if (blocks.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const { loadMermaid } = await import('../lib/mermaid');
+      const mm = await loadMermaid();
+      for (const [i, el] of blocks.entries()) {
+        if (cancelled) return;
+        const src = el.textContent ?? '';
+        el.setAttribute('aria-busy', 'true');
+        try {
+          const { svg } = await mm.render(`mmd-${Date.now()}-${i}`, src);
+          if (cancelled) return;
+          el.innerHTML = svg;
+          el.classList.remove('mermaid-error');
+        } catch {
+          el.classList.add('mermaid-error');
+        }
+        el.removeAttribute('aria-busy');
+        el.dataset.rendered = '1';
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [html]);
+
+  // Excalidraw (2.14): JSON fences → SVG via the lazy excalidraw chunk.
+  // Source is the div's escaped text child; exportToSvg output is
+  // pre-sanitized. Errors degrade to the raw JSON (still legible).
+  useEffect(() => {
+    const root = hostRef.current;
+    if (!root) return;
+    const blocks = Array.from(
+      root.querySelectorAll<HTMLElement>('div.excalidraw-block:not([data-rendered])'),
+    );
+    if (blocks.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const { renderExcalidraw } = await import('../lib/excalidraw');
+      for (const el of blocks) {
+        if (cancelled) return;
+        const src = el.textContent ?? '';
+        el.setAttribute('aria-busy', 'true');
+        try {
+          const svgHtml = await renderExcalidraw(src);
+          if (cancelled) return;
+          el.innerHTML = svgHtml;
+          el.classList.remove('excalidraw-err');
+        } catch {
+          el.classList.add('excalidraw-err');
+        }
+        el.removeAttribute('aria-busy');
+        el.dataset.rendered = '1';
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [html]);
 
   useEffect(() => {
     const root = hostRef.current;

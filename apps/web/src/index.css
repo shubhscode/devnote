@@ -489,3 +489,54 @@ button.focus-ring:active {
 .dark .markdown-body .markdown-alert-caution .markdown-alert-title {
   color: #f85149;
 }
+/* Mermaid diagrams (2.12): SVG injected post-sanitize; theme variables are
+   baked into the svg by mermaid's base theme (see lib/mermaid.ts).
+   Pre-render + on error the raw (escaped) source text stays visible. */
+.markdown-body .mermaid-block {
+  margin: 0.8em 0;
+  text-align: center;
+}
+.markdown-body .mermaid-block[aria-busy='true'],
+.markdown-body .mermaid-block.mermaid-error {
+  white-space: pre-wrap;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--bg-raised, #f4f4f5);
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+.dark .markdown-body .mermaid-block[aria-busy='true'],
+.dark .markdown-body .mermaid-block.mermaid-error {
+  background: #18181b;
+}
+.markdown-body .mermaid-block svg {
+  max-width: 100%;
+  height: auto;
+}
+/* Excalidraw drawings (2.14): SVG injected post-sanitize by exportToSvg
+   (lib/excalidraw.ts). Pre-render + on error the raw (escaped) JSON stays. */
+.markdown-body .excalidraw-block {
+  margin: 0.8em 0;
+  text-align: center;
+}
+.markdown-body .excalidraw-block[aria-busy='true'],
+.markdown-body .excalidraw-block.excalidraw-err {
+  white-space: pre-wrap;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--bg-raised, #f4f4f5);
+  border-radius: 6px;
+  padding: 0.75rem;
+  max-height: 12rem;
+  overflow: auto;
+}
+.dark .markdown-body .excalidraw-block[aria-busy='true'],
+.dark .markdown-body .excalidraw-block.excalidraw-err {
+  background: #18181b;
+}
+.markdown-body .excalidraw-block svg {
+  max-width: 100%;
+  height: auto;
+}

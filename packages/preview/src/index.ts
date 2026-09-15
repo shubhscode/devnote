@@ -15,12 +15,16 @@ import { previewSchema } from './schema';
 import { colorSwatch, indexHeadings, isColorCode, stripFrontmatter } from './plugins';
 import { indexTaskCheckboxes } from './tasks';
 import { renderWikilinks } from './links';
+import { mermaidPlaceholder } from './mermaid';
+import { excalidrawPlaceholder } from './excalidraw';
 
 export { isColorCode, previewSchema };
 export { indexHeadings } from './plugins';
 export { countTasks, indexTaskCheckboxes, setTaskChecked } from './tasks';
 export { renderWikilinks, splitWikilinkText } from './links';
 export { exportHtmlDoc } from './export';
+export { mermaidPlaceholder } from './mermaid';
+export { excalidrawPlaceholder } from './excalidraw';
 export type { ExportTheme } from './export';
 
 /**
@@ -28,7 +32,11 @@ export type { ExportTheme } from './export';
  * so a linking processor is built per call — plugin registration is
  * trivial next to parse cost. The shared plain processor covers the rest.
  */
-function buildProcessor(linkTargets?: Set<string>) {
+function buildProcessor(
+  linkTargets?: Set<string>,
+  mermaid = false,
+  excalidraw = false,
+) {
   const p = unified()
     .use(remarkParse)
     .use(remarkFrontmatter, ['yaml', 'toml'])
@@ -44,6 +52,8 @@ function buildProcessor(linkTargets?: Set<string>) {
     const targets = linkTargets;
     p.use(() => renderWikilinks(targets));
   }
+  if (mermaid) p.use(() => mermaidPlaceholder());
+  if (excalidraw) p.use(() => excalidrawPlaceholder());
   p.use(indexTaskCheckboxes)
     .use(indexHeadings)
     .use(colorSwatch)
@@ -59,10 +69,24 @@ const plainProcessor = buildProcessor();
 export interface RenderOptions {
   /** Lowercased existing note titles — unknown targets render broken. */
   linkTargets?: Set<string>;
+  /** Convert ```mermaid fences to renderable placeholder divs (2.12). */
+  mermaid?: boolean;
+  /** Convert ```excalidraw fences to renderable placeholder divs (2.14). */
+  excalidraw?: boolean;
 }
 
 /** Render Markdown to sanitized HTML. Synchronous; safe to inject. */
 export function renderMarkdown(markdown: string, opts?: RenderOptions): string {
-  if (opts?.linkTargets === undefined) return String(plainProcessor.processSync(markdown));
-  return String(buildProcessor(opts.linkTargets).processSync(markdown));
+  if (
+    opts?.linkTargets === undefined &&
+    !opts?.mermaid &&
+    !opts?.excalidraw
+  ) {
+    return String(plainProcessor.processSync(markdown));
+  }
+  return String(
+    buildProcessor(opts.linkTargets, opts.mermaid, opts.excalidraw).processSync(
+      markdown,
+    ),
+  );
 }

@@ -303,6 +303,33 @@ function buildTheme(dark: boolean, fontSize: number): Extension {
         caretColor: dark ? '#e4e4e7' : '#18181b',
         padding: '12px 0 40vh 0',
       },
+      // Smooth caret: CM reuses cursor nodes across moves
+      // (RectangleMarker.update), so left/top transitions glide instead of
+      // jumping. Reduced-motion zeroes this via the global media rule.
+      '.cm-cursor': {
+        transition: 'left 90ms cubic-bezier(0.16, 1, 0.3, 1), top 90ms cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+      // Fade blink: CM restarts blinking by toggling the layer's inline
+      // animation-name between cm-blink/cm-blink2, so both keyframes fade
+      // identically and the restart keeps working. Our shorthand only wins
+      // the timing function (inline name/duration still apply).
+      '&.cm-focused > .cm-scroller > .cm-cursorLayer': {
+        animation: 'cm-blink 1.2s ease-in-out infinite',
+      },
+      '@keyframes cm-blink': {
+        '0%': { opacity: 1 },
+        '40%': { opacity: 1 },
+        '60%': { opacity: 0 },
+        '80%': { opacity: 0 },
+        '100%': { opacity: 1 },
+      },
+      '@keyframes cm-blink2': {
+        '0%': { opacity: 1 },
+        '40%': { opacity: 1 },
+        '60%': { opacity: 0 },
+        '80%': { opacity: 0 },
+        '100%': { opacity: 1 },
+      },
       '.cm-gutters': {
         backgroundColor: 'transparent',
         border: 'none',

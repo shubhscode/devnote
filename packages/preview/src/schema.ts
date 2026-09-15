@@ -21,6 +21,9 @@ const EXTRA_ATTRS: Record<string, string[]> = {
   // Task round-trip (2.4): type/checked survive, disabled is stripped by the
   // indexer plugin, dataTaskIndex survives for the click handler.
   input: ['className', 'type', 'checked', 'dataTaskIndex'],
+  // Mermaid (2.12): placeholder div; raw diagram source is its escaped
+  // text child — the web app renders the SVG from it (lazy, strict).
+  div: ['className'],
 };
 
 function mergeAttrs(

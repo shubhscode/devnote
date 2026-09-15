@@ -51,6 +51,7 @@ export function loadSettings(adapter: StorageAdapter): Loaded<Settings> {
         noteSort: p.noteSort === 'created' || p.noteSort === 'title' ? p.noteSort : 'updated',
         sidebarWidth: typeof p.sidebarWidth === 'number' ? Math.min(420, Math.max(180, p.sidebarWidth)) : fallback.sidebarWidth,
         listWidth: typeof p.listWidth === 'number' ? Math.min(520, Math.max(240, p.listWidth)) : fallback.listWidth,
+        renderDiagrams: typeof p.renderDiagrams === 'boolean' ? p.renderDiagrams : fallback.renderDiagrams,
       },
       corrupted: false,
     };

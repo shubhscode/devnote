@@ -367,6 +367,22 @@ export default function PreferencesDialog(props: Props) {
                   </div>
                 </Section>
 
+                <Section
+                  title="Preview"
+                  desc="Fenced `mermaid` blocks render as diagrams (HLD/LLD flowcharts, sequence, class, ER)."
+                >
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={settings.renderDiagrams}
+                      onChange={(e) => props.onUpdate({ renderDiagrams: e.target.checked })}
+                      className="accent-sky-600"
+                    />
+                    Render mermaid diagrams in preview
+                  </label>
+                  <p className="mt-1 text-xs opacity-60">Off = blocks stay as syntax-highlighted code.</p>
+                </Section>
+
                 <p className="px-1 text-xs opacity-60">
                   Formatting lives in the selection bubble menu; type <kbd className="rounded bg-zinc-100 px-1 font-mono dark:bg-zinc-800">/</kbd> for blocks, <kbd className="rounded bg-zinc-100 px-1 font-mono dark:bg-zinc-800">mod+F</kbd> to find in the note.
                 </p>
